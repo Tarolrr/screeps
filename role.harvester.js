@@ -5,7 +5,7 @@ var roleHarvester = {
         if(creep.spawning == true) {
             return;
         }
-        var source = Game.getObjectById(creep.memory.assigned_source);
+        var source = Game.getObjectById(creep.memory.assignedSource);
         if(source == undefined){
             return;
         }

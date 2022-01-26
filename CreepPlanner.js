@@ -6,7 +6,7 @@ module.exports = class CreepPlanner {
             parts: {
                 const: [MOVE],
                 ratio: {
-                    WORK: 1
+                    [WORK]: 1
                 }
             },
             memoryFun: function(parts) {
@@ -23,8 +23,8 @@ module.exports = class CreepPlanner {
         mule: {
             parts: {
                 ratio: {
-                    CARRY: 2,
-                    MOVE: 1
+                    [CARRY]: 2,
+                    [MOVE]: 1
                 }
             },
             memoryFun: (parts) => {return {state: "collect"}}
@@ -33,7 +33,7 @@ module.exports = class CreepPlanner {
             parts: {
                 const: [MOVE, CARRY],
                 ratio: {
-                    WORK: 1
+                    [WORK]: 1
                 }
             },
             memoryFun: (parts) => {return {state: "collect"}}
@@ -42,9 +42,9 @@ module.exports = class CreepPlanner {
             parts: {
                 const: [MOVE],
                 ratio: {
-                    WORK: 1,
-                    CARRY: 1,
-                    MOVE: 0.5
+                    [WORK]: 1,
+                    [CARRY]: 1,
+                    [MOVE]: 0.5
                 }
             },
             memoryFun: (parts) => {return {state: "collect"}}
@@ -53,9 +53,9 @@ module.exports = class CreepPlanner {
             parts: {
                 const: [MOVE],
                 ratio: {
-                    WORK: 1,
-                    CARRY: 1,
-                    MOVE: 0.5
+                    [WORK]: 1,
+                    [CARRY]: 1,
+                    // [MOVE]: 0.5
                 }
             },
             memoryFun: (parts) => {return {state: "collect"}}
@@ -85,10 +85,10 @@ module.exports = class CreepPlanner {
 
         if(roleTemplate.parts.ratio) {
             let scaleRequiredCost = 0
-            roleTemplate.parts.ratio.entries().filter(([_, num]) => num >= 1).forEach(([part, num]) => {
+
+            Object.entries(roleTemplate.parts.ratio).filter(([_, num]) => num >= 1).forEach(([part, num]) => {
                 scaleRequiredCost += BODYPART_COST[part] * num
             })
-
             if(costLeft < scaleRequiredCost) {
                 return null
             }
@@ -97,15 +97,18 @@ module.exports = class CreepPlanner {
 
             costLeft -= scaleRequiredCost * scaleRequired
 
-            const scaleRequiredParts = roleTemplate.parts.ratio.entries().flatMap(
+            const scaleRequiredParts = Object.entries(roleTemplate.parts.ratio).flatMap(
                 ([p, n]) => new Array(n).fill(p))
 
             parts.push(...makeRepeated(scaleRequiredParts, scaleRequired))
         }
 
+        const memory = roleTemplate.memoryFun(parts)
+        memory.role = role
+
         return {
             cost: maxCost - costLeft,
-            memory: roleTemplate.memoryFun(parts),
+            memory: memory,
             parts: parts
         }
 
