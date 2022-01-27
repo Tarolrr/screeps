@@ -72,7 +72,7 @@ module.exports = class DeliveryManager {
 
     }
 
-    queueCreep() {
+    creepNeeded() {
         for(const [name, producer] in Object.entries(this.producers)) {
             let maxDist = 0
             this.routes.forEach(route => {
@@ -88,15 +88,11 @@ module.exports = class DeliveryManager {
             if(currEnergyRate < targetEnergyRate) {
                 return {
                     role: "mule",
+                    memory: {
+                        src: name
+                    },
                     priority: 6
                 }
-            }
-        }
-        if((this.freePlaces > 0) && (this.hasWork < this.needWork)) {
-            // request harvester of maximum practical size
-            return {
-                role: "harvester",
-                priority: 5
             }
         }
         return null
@@ -112,10 +108,9 @@ module.exports = class DeliveryManager {
 
     /** @param {Creep} creep */
     planDelivery(creep) {
-        /** @type {DeliveryRoute} rule */
-        for(const rule of this.routes) {
-            if(rule.dst.energyNeeded > 0) {
-                Object.setPrototypeOf(rule.dst, Consumer)
+        let selectedRoute = null
+        for(const route of this.routes) {
+            if((creep.memory.src == route.src.name) && (route.dst.energyNeeded > 0)) {
                 rule.dst.planDelivery(creep.store.getUsedCapacity())
                 creep.memory.destination = rule.dst.destination()
                 // creep.memory.state = "store"

@@ -46,6 +46,10 @@ module.exports = class StorageManager extends Producer(Consumer) {
         return 10
     }
 
+    creepNeeded() {
+        return null
+    }
+
     get availableEnergy() {
         this.energyAvailable = 0
 

@@ -1,5 +1,6 @@
 const CreepPlanner = require("./CreepPlanner")
 const Consumer = require("./Consumer")
+const QueuedCreep = require("./creepUtils").QueuedCreep
 
 module.exports = class SpawnManager extends Consumer {
     /** @param {Room} room */
@@ -85,13 +86,18 @@ module.exports = class SpawnManager extends Consumer {
 
     }
 
+    creepNeeded() {
+        return null
+    }
+
+    /** @return {QueuedCreep} */
     queueCreep(role, memory = {}) {
         const creepTemplate = CreepPlanner.calculateCreep(role, this.room.energyCapacityAvailable)
-        creepTemplate.name = creepTemplate.memory.role + Memory.creepId
-        creepTemplate.memory = Object.assign(creepTemplate.memory, memory)
+        const queuedCreep = new QueuedCreep(creepTemplate.memory.role + Memory.creepId,
+            Object.assign(creepTemplate.memory, memory), creepTemplate.parts)
         Memory.creepId++
-        this.queue.push(creepTemplate)
-        return creepTemplate
+        this.queue.push(queuedCreep)
+        return queuedCreep
     }
 
     run() {

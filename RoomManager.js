@@ -50,6 +50,25 @@ module.exports = class RoomManager {
     load() {
     }
 
+    queueCreeps() {
+        let creepNeeded
+        do {
+            creepNeeded = null
+            let selectedManager
+            for(const [name, manager] of Object.entries(this.managers)) {
+                const tmpCreep = manager.creepNeeded()
+                if((tmpCreep) && (!creepNeeded || (tmpCreep.priority > creepNeeded.priority))) {
+                    creepNeeded = tmpCreep
+                    selectedManager = manager
+                }
+            }
+            if(creepNeeded) {
+                const queuedCreep = this.spawnManager.queueCreep(creepNeeded.role, creepNeeded.memory)
+                selectedManager.addCreep(queuedCreep)
+            }
+        } while(creepNeeded)
+    }
+
     save() {
         Memory.managers[this.name] = {
             room: this.room.name

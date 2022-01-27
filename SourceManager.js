@@ -1,5 +1,6 @@
 const SourceDesc = require('./SourceDesc');
 const Producer = require("./Producer")
+const QueuedCreep = require("./creepUtils").QueuedCreep
 
 module.exports = class SourceManager extends Producer(Object) {
     /** @param {Room} room
@@ -99,11 +100,14 @@ module.exports = class SourceManager extends Producer(Object) {
     }
 
     // will be called by RoomManager
-    queueCreep() {
+    creepNeeded() {
         if((this.freePlaces > 0) && (this.hasWork < this.needWork)) {
             // request harvester of maximum practical size
             return {
                 role: "harvester",
+                memory: {
+                    assignedSource: this.source.id
+                },
                 priority: 5
             }
             // TODO add has work
@@ -119,6 +123,11 @@ module.exports = class SourceManager extends Producer(Object) {
         // }
     }
 
+    /** @param {QueuedCreep} queuedCreep*/
+    addCreep(queuedCreep) {
+        this
+    }
+
     run() {
 
         this.creepsQueued.forEach(val => {
@@ -129,7 +138,7 @@ module.exports = class SourceManager extends Producer(Object) {
         this.creepsQueued = this.creepsQueued.filter(value => !(value.name in Game.creeps))
 
         this.hasWork = 0
-        this.creeps.forEach(creep => this.hasWork += creep.memory.effectiveness)
+        this.creeps.forEach(creep => this.hasWork += creep.memory.efficiency)
         this.creepsQueued.forEach(creep => this.hasWork += creep.memory.efficiency)
         this.freePlaces = this.workPlaces.length - this.creeps.length - this.creepsQueued.length
 
@@ -155,12 +164,5 @@ module.exports = class SourceManager extends Producer(Object) {
                 break;
             }
         }
-    }
-}
-
-class QueuedCreep {
-    constructor(name, effectiveness) {
-        this.name = name
-        this.effectiveness = effectiveness
     }
 }

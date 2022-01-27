@@ -1,5 +1,5 @@
 const harvestPlanner = require('./room.harvestPlanner');
-
+const CreepTemplate = require("./creepUtils").CreepTemplate
 module.exports = class CreepPlanner {
     static roles = {
         harvester: {
@@ -10,14 +10,9 @@ module.exports = class CreepPlanner {
                 }
             },
             memoryFun: function(parts) {
-                //TODO count all work parts and return efficiency: <WORK_PART_COUNT>
-                let efficiency = 0
-                parts.forEach((part, idx, arr) => {
-                    if(part == WORK) {
-                        efficiency++
-                    }
-                })
-                return {"efficiency": efficiency}
+                return {
+                    efficiency: parts.filter(part => part == WORK).length
+                }
             }
         },
         mule: {
@@ -27,7 +22,12 @@ module.exports = class CreepPlanner {
                     [MOVE]: 1
                 }
             },
-            memoryFun: (parts) => {return {state: "collect"}}
+            memoryFun: function(parts) {
+                return {
+                    state: "collect",
+                    efficiency: parts.filter(part => part == CARRY).length
+                }
+            }
         },
         upgrader: {
             parts: {
@@ -61,6 +61,8 @@ module.exports = class CreepPlanner {
             memoryFun: (parts) => {return {state: "collect"}}
         },
     }
+
+    /** @return {CreepTemplate} */
 
     static calculateCreep(role, maxCost) {
         const makeRepeated = (arr, repeats) =>
@@ -106,11 +108,7 @@ module.exports = class CreepPlanner {
         const memory = roleTemplate.memoryFun(parts)
         memory.role = role
 
-        return {
-            cost: maxCost - costLeft,
-            memory: memory,
-            parts: parts
-        }
+        return new CreepTemplate(maxCost - costLeft, memory, parts)
 
         // if((roleTemplate.parts.ratio) && (roleTemplate.parts.ratio.values().find((v) => v < 1))){
         //     let scaleFullCost = 0
