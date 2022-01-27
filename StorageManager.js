@@ -1,10 +1,10 @@
 const SourceDesc = require('./SourceDesc');
 const Consumer = require("./Consumer")
-const Producer = require("./Producer")
+const ProducerMixin = require("./Producer").ProducerMixin
 
-module.exports = class StorageManager extends Producer(Consumer) {
+module.exports = class StorageManager extends ProducerMixin(Consumer) {
     /** @param {Room} room
-     *  @param {RoomPosition} pos*/
+     *  @param {RoomPosition} pos */
     constructor(room, pos, parent) {
         super()
 

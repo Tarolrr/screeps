@@ -1,17 +1,16 @@
 module.exports = class Consumer {
     constructor() {
-        this.energyNeeded = 0
     }
 
     planDelivery(amount) {
-        this.energyNeeded = this.energyNeeded < amount ? 0 : this.energyNeeded - amount
+        // this.energyNeeded = this.energyNeeded < amount ? 0 : this.energyNeeded - amount
     }
 
     get name() {
         throw new Error("Implementation needed")
     }
 
-    recalculateNeededEnergy() {
+    get energyNeeded() {
         throw new Error("Implementation needed")
     }
 

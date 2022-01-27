@@ -1,4 +1,4 @@
-module.exports = (Producer) => class extends Producer {
+const Producer = (superClass) => class extends superClass {
     constructor() {
         super()
 
@@ -13,11 +13,16 @@ module.exports = (Producer) => class extends Producer {
         throw new Error("Implementation needed")
     }
 
-    name() {
-        throw new Error("Implementation needed")
-    }
-
     rulesTemplate() {
         throw new Error("Implementation needed")
     }
+
+    creepNeeded() {
+        throw new Error("Implementation needed")
+    }
+}
+
+module.exports = {
+    Producer: Producer(Object),
+    ProducerMixin: Producer
 }

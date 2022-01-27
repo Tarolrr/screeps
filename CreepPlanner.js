@@ -65,25 +65,26 @@ module.exports = class CreepPlanner {
     /** @return {CreepTemplate} */
 
     static calculateCreep(role, maxCost) {
+        let costLeft = maxCost
         const makeRepeated = (arr, repeats) =>
             Array.from({ length: repeats }, () => arr).flat();
 
         const roleTemplate = this.roles[role]
         const parts = []
-        let constCost = 0
         if(roleTemplate.parts.const) {
+            let constCost = 0
             roleTemplate.parts.const.forEach((part, idx, arr) => {
                 constCost += BODYPART_COST[part]
             })
+            if(maxCost < constCost) {
+                return null
+            }
+
+            parts.push(...roleTemplate.parts.const)
+            costLeft -= constCost
         }
 
-        if(maxCost < constCost) {
-            return null
-        }
 
-        parts.push(...roleTemplate.parts.const)
-
-        let costLeft = maxCost - constCost
 
         if(roleTemplate.parts.ratio) {
             let scaleRequiredCost = 0

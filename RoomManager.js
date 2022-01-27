@@ -11,8 +11,6 @@ module.exports = class RoomManager {
         this.managers[this.spawnManager.name] = this.spawnManager
         this.storageManager = new StorageManager(room, this.spawnManager.spawn.pos, this)
         this.managers[this.storageManager.name] = this.storageManager
-        this.deliveryManager = new DeliveryManager(room, this)
-        this.managers[this.deliveryManager.name] = this.deliveryManager
 
         /** @type Array.<SourceManager> */
         this.sourceManagers = []
@@ -24,6 +22,8 @@ module.exports = class RoomManager {
             this.sourceManagers.push(sourceManager)
             this.managers[sourceManager.name] = sourceManager
         })
+        this.deliveryManager = new DeliveryManager(room, this)
+        this.managers[this.deliveryManager.name] = this.deliveryManager
 
         this.room = room
         if(this.name in Memory.managers) {
@@ -32,6 +32,9 @@ module.exports = class RoomManager {
         }
 
         this.deliveryManager.addConsumer(this.spawnManager)
+        this.sourceManagers.forEach(sourceManager => {
+            this.deliveryManager.registerProducer(sourceManager)
+        })
     }
 
     get name() {
@@ -39,11 +42,11 @@ module.exports = class RoomManager {
     }
 
     run() {
-        console.log(this.spawnManager.room)
         this.spawnManager.run()
         this.sourceManagers.forEach(srcMng => srcMng.run())
         this.storageManager.run()
         this.deliveryManager.run()
+        this.queueCreeps()
         this.save()
     }
 

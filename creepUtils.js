@@ -8,10 +8,11 @@ class CreepTemplate {
 }
 
 class QueuedCreep {
-    constructor(name, memory, parts) {
+    constructor(name, memory, parts, cost) {
         this.name = name
         this.memory = memory
         this.parts = parts
+        this.cost = cost
     }
 }
 

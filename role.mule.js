@@ -1,98 +1,142 @@
+const DeliveryManager = require("./DeliveryManager")
+
 var roleMule = {
 
     /** @param {Creep} creep **/
     run: function(creep) {
-        if(creep.spawning == true) {
-            return;
-        }
-
-        if(creep.memory.path != undefined) {
-            if(creep.memory.path.length == 0) {
-                delete creep.memory.path;
-                delete creep.memory.lastPos;
-
-                return
-            }
-
-            if(creep.fatigue > 0){
-                return
-            }
-            let path = Room.deserializePath(creep.memory.path)
-            if((creep.memory.lastPos != undefined) && (creep.memory.lastPos.x == creep.pos.x) && (creep.memory.lastPos.y == creep.pos.y)){
-                creep.memory.stallCtr++;
-            }
-            else if (creep.memory.lastPos != undefined){
-                path.shift()
-                creep.memory.stallCtr = 0;
-                if (path.length == 0) {
-                    delete creep.memory.path;
-                    delete creep.memory.lastPos;
-                    return
-                }
-                creep.memory.path = Room.serializePath(path)
-            }
-            creep.memory.lastPos = creep.pos
-            creep.move(path[0].direction)
-
-            if(creep.memory.stallCtr > 2) {
-
-                creep.memory.stallCtr = 0;
-                if(creep.memory.retries++ > 1){
-                    delete creep.memory.path;
-                    delete creep.memory.lastPos;
-                    return
-                }
-                path = creep.room.findPath(creep.pos, new RoomPosition(path[path.length-1].x, path[path.length-1].y, creep.room.name))
-                creep.memory.path = Room.serializePath(path)
-            }
+        if((creep.spawning == true)){
             return
         }
 
-        if(creep.memory.state == "collect") {
-            if(creep.store.getFreeCapacity() == 0) {
-                if(creep.room.memory.queue.length > 0) {
-                    creep.memory.dst = "spawn"
+        if(creep.memory.destination) {
+            const destination = creep.memory.destination
+            if(destination.type == "wait") {
+                if(creep.pos.getRangeTo(destination.pos) > destination.range) {
+                    creep.moveTo(destination.pos)
+                    return
+                }
+                else if(destination.time > 0){
+                    destination.time--
+                    return
                 }
                 else {
-                    creep.memory.dst = "storage"
-                }
-                creep.memory.state = "store";
-                return
-            }
-            const pos = creep.memory.src
-            Object.setPrototypeOf(pos, RoomPosition.prototype)
-            const resourceList = pos.findInRange(FIND_DROPPED_RESOURCES, 1);
-            if((resourceList.length == 0)) {
-                creep.memory.state = "store"
-                return
-            }
-            let size = 0;
-            let idx = 0;
-            for(const iR in resourceList) {
-                if(resourceList[iR].amount > size) {
-                    size = resourceList[iR].amount;
-                    idx = iR;
+                    delete creep.memory.destination
                 }
             }
-            const res = resourceList[idx];
-            // const res = creep.pos.findClosestByRange(ress);
-            if(creep.pos.getRangeTo(res) <= 1) {
-                creep.pickup(res)
+            else if(destination.type == "resource") {
+                const objList = creep.room.lookForAt(LOOK_RESOURCES, destination.pos.x, destination.pos.y)
+                console.log(objList.length)
+                if(objList.length > 0) {
+                    if(creep.pos.getRangeTo(objList[0]) > 1) {
+                        creep.moveTo(objList[0])
+                    }
+                    else {
+                        creep.pickup(objList[0])
+                        delete creep.memory.destination
+                    }
+                    return
+                }
+                delete creep.memory.destination
             }
-            else if(creep.pos.getRangeTo(res) <= 3) {
-                creep.moveTo(res);
-            }
-            else {
-                creep.memory.retries = 0;
-                const path = creep.room.findPath(creep.pos, res.pos, {range: 1, ignoreCreeps: true})
-                creep.memory.path = Room.serializePath(path)
-                return
+            else if(destination.type == "structure") {
+                if(creep.memory.state == "store") {
+                    const structure = Game.getObjectById(destination.id)
+                    if(creep.pos.getRangeTo(structure) <= 1) {
+                        creep.transfer(structure, RESOURCE_ENERGY)
+                        delete creep.memory.destination
+                    }
+                    else {
+                        creep.moveTo(structure)
+                    }
+                    return
+                }
             }
         }
-        if(creep.memory.state == "store") {
+        // if(creep.memory.path != undefined) {
+        //     if(creep.memory.path.length == 0) {
+        //         delete creep.memory.path;
+        //         delete creep.memory.lastPos;
+        //
+        //         return
+        //     }
+        //
+        //     if(creep.fatigue > 0){
+        //         return
+        //     }
+        //     let path = Room.deserializePath(creep.memory.path)
+        //     if((creep.memory.lastPos != undefined) && (creep.memory.lastPos.x == creep.pos.x) && (creep.memory.lastPos.y == creep.pos.y)){
+        //         creep.memory.stallCtr++;
+        //     }
+        //     else if (creep.memory.lastPos != undefined){
+        //         path.shift()
+        //         creep.memory.stallCtr = 0;
+        //         if (path.length == 0) {
+        //             delete creep.memory.path;
+        //             delete creep.memory.lastPos;
+        //             return
+        //         }
+        //         creep.memory.path = Room.serializePath(path)
+        //     }
+        //     creep.memory.lastPos = creep.pos
+        //     creep.move(path[0].direction)
+        //
+        //     if(creep.memory.stallCtr > 2) {
+        //
+        //         creep.memory.stallCtr = 0;
+        //         if(creep.memory.retries++ > 1){
+        //             delete creep.memory.path;
+        //             delete creep.memory.lastPos;
+        //             return
+        //         }
+        //         path = creep.room.findPath(creep.pos, new RoomPosition(path[path.length-1].x, path[path.length-1].y, creep.room.name))
+        //         creep.memory.path = Room.serializePath(path)
+        //     }
+        //     return
+        // }
+
+        collect: if(creep.memory.state == "collect") {
+            if(creep.store.getFreeCapacity() == 0) {
+                // if(creep.room.memory.queue.length > 0) {
+                //     creep.memory.dst = "spawn"
+                // }
+                // else {
+                //     creep.memory.dst = "storage"
+                // }
+                creep.memory.state = "store";
+                break collect
+            }
+            const src = DeliveryManager.cache[DeliveryManager.name(creep.room)].producers.filter(prd => prd.name == creep.memory.src)[0]
+            creep.memory.destination = src.destination()
+
+            // let size = 0;
+            // let idx = 0;
+            // for(const iR in resourceList) {
+            //     if(resourceList[iR].amount > size) {
+            //         size = resourceList[iR].amount;
+            //         idx = iR;
+            //     }
+            // }
+            // const res = resourceList[idx];
+            // // const res = creep.pos.findClosestByRange(ress);
+            // if(creep.pos.getRangeTo(res) <= 1) {
+            //     creep.pickup(res)
+            // }
+            // else if(creep.pos.getRangeTo(res) <= 3) {
+            //     creep.moveTo(res);
+            // }
+            // else {
+            //     creep.memory.retries = 0;
+            //     const path = creep.room.findPath(creep.pos, res.pos, {range: 1, ignoreCreeps: true})
+            //     creep.memory.path = Room.serializePath(path)
+            //     return
+            // }
+        }
+        store: if(creep.memory.state == "store") {
             if(creep.store.getUsedCapacity() == 0) {
                 creep.memory.state = "collect";
             }
+            DeliveryManager.cache[DeliveryManager.name(creep.room)].planDelivery(creep)
+            break store
             if(creep.memory.dst == "spawn") {
                 /** @type StructureSpawn */
                 const spawn = creep.room.find(FIND_MY_SPAWNS)[0];
@@ -170,6 +214,7 @@ var roleMule = {
                 }
             }
         }
+
 	}
 };
 
