@@ -70,7 +70,11 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
     }
 
     run() {
-        const room = Game.rooms[this.room];
+
+        const [_, storageFlag] = Object.entries(Game.flags).find(([name, flag]) => (flag.room.name == this.room.name) && (name.indexOf("storage") != -1))
+        if(storageFlag) {
+            this.pos = storageFlag.pos
+        }
         return
 
         /** @type Array.<Source> */
