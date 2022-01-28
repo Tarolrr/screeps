@@ -1,66 +1,66 @@
 const harvestPlanner = require('./room.harvestPlanner');
 const CreepTemplate = require("./creepUtils").CreepTemplate
 module.exports = class CreepPlanner {
-    static roles = {
-        harvester: {
-            parts: {
-                const: [MOVE],
-                ratio: {
-                    [WORK]: 1
-                }
-            },
-            memoryFun: function(parts) {
-                return {
-                    efficiency: parts.filter(part => part == WORK).length
-                }
-            }
-        },
-        mule: {
-            parts: {
-                ratio: {
-                    [CARRY]: 2,
-                    [MOVE]: 1
-                }
-            },
-            memoryFun: function(parts) {
-                return {
-                    state: "collect",
-                    efficiency: parts.filter(part => part == CARRY).length
-                }
-            }
-        },
-        upgrader: {
-            parts: {
-                const: [MOVE, CARRY],
-                ratio: {
-                    [WORK]: 1
-                }
-            },
-            memoryFun: (parts) => {return {state: "collect"}}
-        },
-        builder: {
-            parts: {
-                const: [MOVE],
-                ratio: {
-                    [WORK]: 1,
-                    [CARRY]: 1,
-                    [MOVE]: 0.5
-                }
-            },
-            memoryFun: (parts) => {return {state: "collect"}}
-        },
-        repairer: {
-            parts: {
-                const: [MOVE],
-                ratio: {
-                    [WORK]: 1,
-                    [CARRY]: 1,
-                    // [MOVE]: 0.5
-                }
-            },
-            memoryFun: (parts) => {return {state: "collect"}}
-        },
-    }
+    // roles = {
+    //     harvester: {
+    //         parts: {
+    //             const: [MOVE],
+    //             ratio: {
+    //                 [WORK]: 1
+    //             }
+    //         },
+    //         memoryFun: function(parts) {
+    //             return {
+    //                 efficiency: parts.filter(part => part == WORK).length
+    //             }
+    //         }
+    //     },
+    //     mule: {
+    //         parts: {
+    //             ratio: {
+    //                 [CARRY]: 2,
+    //                 [MOVE]: 1
+    //             }
+    //         },
+    //         memoryFun: function(parts) {
+    //             return {
+    //                 state: "collect",
+    //                 efficiency: parts.filter(part => part == CARRY).length
+    //             }
+    //         }
+    //     },
+    //     upgrader: {
+    //         parts: {
+    //             const: [MOVE, CARRY],
+    //             ratio: {
+    //                 [WORK]: 1
+    //             }
+    //         },
+    //         memoryFun: (parts) => {return {state: "collect"}}
+    //     },
+    //     builder: {
+    //         parts: {
+    //             const: [MOVE],
+    //             ratio: {
+    //                 [WORK]: 1,
+    //                 [CARRY]: 1,
+    //                 [MOVE]: 0.5
+    //             }
+    //         },
+    //         memoryFun: (parts) => {return {state: "collect"}}
+    //     },
+    //     repairer: {
+    //         parts: {
+    //             const: [MOVE],
+    //             ratio: {
+    //                 [WORK]: 1,
+    //                 [CARRY]: 1,
+    //                 // [MOVE]: 0.5
+    //             }
+    //         },
+    //         memoryFun: (parts) => {return {state: "collect"}}
+    //     },
+    // }
 
     /** @return {CreepTemplate} */
 

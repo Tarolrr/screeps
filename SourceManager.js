@@ -5,7 +5,7 @@ const QueuedCreep = require("./creepUtils").QueuedCreep
 
 module.exports = class SourceManager extends ProducerMixin(Object) {
 
-    static cache = {}
+    // static cache = {}
 
     static name(room, source) {
         return room.name + "_SrcM" + source.pos.x + "." + source.pos.y
@@ -197,6 +197,7 @@ module.exports = class SourceManager extends ProducerMixin(Object) {
         //
         // }
     }
+
     assignHarvester(creepMemory, room) {
         for(const srcId in room.memory.srcDescs){
             const srcDesc = room.memory.srcDescs[srcId];
@@ -209,3 +210,5 @@ module.exports = class SourceManager extends ProducerMixin(Object) {
         }
     }
 }
+
+module.exports.cache = {}

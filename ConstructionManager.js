@@ -16,24 +16,27 @@ module.exports = class SpawnManager {
         this.priority = 3
         /** @type Array.<Creep> */
         this.creeps = []
+        /** @type Array.<QueuedCreep> */
+        this.creepsQueued = []
     }
 
     get name() {
         return this.room.name + "_CnstrM"
     }
-
-    get energyNeeded() {
-        const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
-
-        let queueCost = 0
-        this.queue.forEach(creep => queueCost += creep.cost)
-
-        return queueCost - this.room.energyAvailable - deliveryManager.pendingEnergy(this.name)
-    }
+    //
+    // get energyNeeded() {
+    //     const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
+    //
+    //     let queueCost = 0
+    //     this.queue.forEach(creep => queueCost += creep.cost)
+    //
+    //     return queueCost - this.room.energyAvailable - deliveryManager.pendingEnergy(this.name)
+    // }
 
     load() {
         this.priority = Memory.managers[this.name].priority
         this.creeps = Memory.managers[this.name].creeps.map(creep => Game.creeps[creep]).filter(creep => creep != undefined)
+        this.creepsQueued = Memory.managers[this.name].creepsQueued
     }
 
     save() {
@@ -41,52 +44,49 @@ module.exports = class SpawnManager {
             priority: this.priority,
             room: this.room.name,
             creeps: this.creeps.map(creep => creep.name),
+            creepsQueued:   this.creepsQueued,
         }
     }
 
-    get pos() {
-        return this.spawn.pos
-    }
-
-    destination() {
-
-        /** @type Array.<StructureSpawn> */
-        const spawnList = this.room.find(FIND_MY_SPAWNS);
-
-        if(spawnList.length == 0) {
-            return
-        }
-
-        for(const spawn of spawnList) {
-            if(spawn.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-                return {
-                    "type": "structure",
-                    "id": spawn.id
-                }
-            }
-        }
-
-        const extList = this.room.find(FIND_MY_STRUCTURES,
-            {filter: (s) => s.structureType == STRUCTURE_EXTENSION});
-
-        for(const extension of extList) {
-            if(extension.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-                return {
-                    "type": "structure",
-                    "id": extension.id
-                }
-            }
-        }
-
-
-        return {
-            "type": "wait",
-            "pos": spawnList[0].pos,
-            "range": 2,
-            "time": 10
-        }
-
-    }
+    // destination() {
+    //
+    //     /** @type Array.<StructureSpawn> */
+    //     const spawnList = this.room.find(FIND_MY_SPAWNS);
+    //
+    //     if(spawnList.length == 0) {
+    //         return
+    //     }
+    //
+    //     for(const spawn of spawnList) {
+    //         if(spawn.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+    //             return {
+    //                 "type": "structure",
+    //                 "id": spawn.id
+    //             }
+    //         }
+    //     }
+    //
+    //     const extList = this.room.find(FIND_MY_STRUCTURES,
+    //         {filter: (s) => s.structureType == STRUCTURE_EXTENSION});
+    //
+    //     for(const extension of extList) {
+    //         if(extension.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
+    //             return {
+    //                 "type": "structure",
+    //                 "id": extension.id
+    //             }
+    //         }
+    //     }
+    //
+    //
+    //     return {
+    //         "type": "wait",
+    //         "pos": spawnList[0].pos,
+    //         "range": 2,
+    //         "time": 10
+    //     }
+    //
+    // }
 
     creepNeeded() {
         if((this.parent.storageManager.availableEnergy / 500) > this.creeps.keys().length) {
@@ -99,8 +99,13 @@ module.exports = class SpawnManager {
         return null
     }
 
-
+    /** @param {QueuedCreep} queuedCreep*/
+    addCreep(queuedCreep) {
+        this.creepsQueued.push(queuedCreep)
+    }
 
     run() {
+        this.creepsQueued.filter(creep => creep.name in Game.creeps).forEach(creep => this.creeps.push(Game.creeps[creep.name]))
+        this.creepsQueued = this.creepsQueued.filter(creep => !(creep.name in Game.creeps))
     }
 }

@@ -129,14 +129,7 @@ module.exports = class SpawnManager extends Consumer {
     run() {
         if((this.queue.length > 0) && (this.spawn.spawnCreep(this.queue[0].parts, "dry_run" + Memory.creepId, {dryRun: true}) == OK)) {
             const creepTemplate = this.queue.shift();
-            // const creepMemory = Object.assign({}, creepTemplate.memory);
-
-            // if(creepMemory.role == "mule") {
-            //     harvestPlanner.assignMule(creepMemory, room)
-            //     consumptionPlanner.assignMule(creepMemory, room)
-            // }
             this.spawn.spawnCreep(creepTemplate.parts, creepTemplate.name, {memory: creepTemplate.memory});
-
         }
     }
 }

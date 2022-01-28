@@ -1,10 +1,17 @@
+"use strict";
+
 const Consumer = require("./Consumer")
 const Producer = require("./Producer").Producer
 
 module.exports = class DeliveryManager {
 
     /** @type Object.<string, DeliveryManager> */
-    static cache={}
+
+    // static cache
+    //
+    // static {
+    //     DeliveryManager.cache = {}
+    // }
 
     static name(room) {
         return room.name + "_DlvM"
@@ -12,6 +19,13 @@ module.exports = class DeliveryManager {
 
     /** @param {Room} room*/
     constructor(room, parent) {
+        const test2 = {a: 1, b: 2}
+        const test = Map.fromObject(test2)
+        const test3 = Array.from(test)
+        console.log(test3.length)
+        for(const [k, v] of test) {
+            console.log(k + ": " + v)
+        }
         this.room = room
         this.parent = parent
         DeliveryManager.cache[DeliveryManager.name(room)] = this
@@ -26,7 +40,7 @@ module.exports = class DeliveryManager {
         /** @type Array.<Creep> */
         this.creeps = []
         // memorable
-        this.plannedDeliveries = {}
+        this.plannedDeliveries = new Map()
 
         const structureList = room.find(FIND_STRUCTURES,
             {filter: (s) => new Set([STRUCTURE_CONTROLLER, STRUCTURE_STORAGE,
@@ -51,14 +65,14 @@ module.exports = class DeliveryManager {
         this.creeps =       Memory.managers[this.name].creeps.map(creep => Game.creeps[creep])
         this.routes =       Memory.managers[this.name].routes.map(route => {
             return {
-                src: this.parent.managers[route.src],
-                dst: this.parent.managers[route.dst],
+                src: this.parent.managers.get(route.src),
+                dst: this.parent.managers.get(route.dst),
                 priority: route.priority,
                 distance: route.distance
             }
         })
-        this.producers =    Memory.managers[this.name].producers.map(producer => this.parent.managers[producer])
-        this.plannedDeliveries = Memory.managers[this.name].plannedDeliveries
+        this.producers =    Memory.managers[this.name].producers.map(producer => this.parent.managers.get(producer))
+        this.plannedDeliveries = Map.fromObject(Memory.managers[this.name].plannedDeliveries)
         this.costMatrix = PathFinder.CostMatrix.deserialize(Memory.managers[this.name].costMatrix)
     }
 
@@ -73,7 +87,7 @@ module.exports = class DeliveryManager {
                 distance: route.distance
             }}),
             producers:  this.producers.map(producer => producer.name),
-            plannedDeliveries: this.plannedDeliveries,
+            plannedDeliveries: this.plannedDeliveries.toObject(),
             costMatrix: this.costMatrix.serialize()
         }
     }
@@ -154,10 +168,10 @@ module.exports = class DeliveryManager {
                 route.dst.planDelivery(creep.store.getUsedCapacity())
                 creep.memory.destination = route.dst.destination()
                 // creep.memory.state = "store"
-                this.plannedDeliveries[creep.name] = {
+                this.plannedDeliveries.set(creep.name, {
                     amount: creep.store.getUsedCapacity(),
                     dst: route.dst.name
-                }
+                })
                 return
             }
         }
@@ -165,25 +179,27 @@ module.exports = class DeliveryManager {
 
     deliveries(managerName) {
         console.log(managerName)
-        console.log(Object.entries(this.plannedDeliveries).filter(([name, dlv]) => dlv.dst == managerName).length)
-        return Object.fromEntries(Object.entries(this.plannedDeliveries).filter(([name, dlv]) => dlv.dst == managerName))
+        console.log(Array.from(this.plannedDeliveries).filter(([name, dlv]) => dlv.dst == managerName).length)
+        return new Map(Array.from(this.plannedDeliveries).filter(([name, dlv]) => dlv.dst == managerName))
     }
 
     pendingEnergy(managerName) {
         let pendingEnergy = 0
-        Object.values(this.deliveries(managerName)).forEach(delivery => pendingEnergy += delivery.amount)
+        this.deliveries(managerName).forEach(delivery => pendingEnergy += delivery.amount)
         return pendingEnergy
     }
 
     deliveryCompleted(creep) {
-        delete this.plannedDeliveries[creep.name]
+        this.plannedDeliveries.delete(creep.name)
     }
 
     run() {
-        this.plannedDeliveries = Object.fromEntries(Object.entries(this.plannedDeliveries).filter(([name, dlv]) => name in Game.creeps))
+        this.plannedDeliveries = this.plannedDeliveries.filter(([name, dlv]) => name in Game.creeps)
     }
 
 }
+
+module.exports.cache = {}
 
 class DeliveryRoute {
 

@@ -5,12 +5,16 @@ const StorageManager = require("./StorageManager")
 
 module.exports = class RoomManager {
     /** @param {Room} room */
+
     constructor(room) {
-        this.managers = {}
+        this.managers = new Map()
+        if(!("managers" in Memory)){
+            Memory.managers = {}
+        }
         this.spawnManager = new SpawnManager(room, this)
-        this.managers[this.spawnManager.name] = this.spawnManager
+        this.managers.set(this.spawnManager.name, this.spawnManager)
         this.storageManager = new StorageManager(room, this.spawnManager.spawn.pos, this)
-        this.managers[this.storageManager.name] = this.storageManager
+        this.managers.set(this.storageManager.name, this.storageManager)
 
         /** @type Array.<SourceManager> */
         this.sourceManagers = []
@@ -20,10 +24,10 @@ module.exports = class RoomManager {
         sourcesList.forEach(source => {
             const sourceManager = new SourceManager(room, source, this)
             this.sourceManagers.push(sourceManager)
-            this.managers[sourceManager.name] = sourceManager
+            this.managers.set(sourceManager.name, sourceManager)
         })
         this.deliveryManager = new DeliveryManager(room, this)
-        this.managers[this.deliveryManager.name] = this.deliveryManager
+        this.managers.set(this.deliveryManager.name, this.deliveryManager)
 
         this.room = room
         if(this.name in Memory.managers) {

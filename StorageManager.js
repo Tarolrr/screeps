@@ -21,7 +21,7 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
     }
 
     load() {
-        this.pos = new RoomPosition(Memory.managers[this.name].pos.x, Memory.managers[this.name].pos.y, this.room.name)
+        this.pos = new RoomPosition(Memory.this.managers.get(this.name).pos.x, Memory.managers[this.name].pos.y, this.room.name)
         // Object.setPrototypeOf(this.pos, RoomPosition)
     }
 
@@ -176,4 +176,4 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
             }
         }
     }
-};
+}
