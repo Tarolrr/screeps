@@ -15,9 +15,8 @@ module.exports = class SpawnManager extends Consumer {
             return
         }
 
-        this.priority = 5
-        this.queue = []
-        this.spawn = room.find(FIND_MY_SPAWNS)[0]
+        this.priority = 3
+        this.controller = room.controller
     }
 
     get name() {

@@ -9,7 +9,7 @@ module.exports = class Consumer {
     get name() {
         throw new Error("Implementation needed")
     }
-
+    /** @return {number} */
     get energyNeeded() {
         throw new Error("Implementation needed")
     }

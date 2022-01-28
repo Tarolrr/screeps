@@ -25,7 +25,6 @@ var roleMule = {
             }
             else if(destination.type == "resource") {
                 const objList = creep.room.lookForAt(LOOK_RESOURCES, destination.pos.x, destination.pos.y)
-                console.log(objList.length)
                 if(objList.length > 0) {
                     if(creep.pos.getRangeTo(objList[0]) > 1) {
                         creep.moveTo(objList[0])
@@ -50,6 +49,17 @@ var roleMule = {
                     }
                     return
                 }
+            }
+            else if(destination.type == "ground") {
+                const pos = new RoomPosition(destination.pos.x, destination.pos.y, creep.room.name)
+                if(creep.pos.getRangeTo(pos) > destination.range) {
+                    creep.moveTo(pos)
+                }
+                else {
+                    creep.drop(RESOURCE_ENERGY)
+                    delete creep.memory.destination
+                }
+                return
             }
         }
         // if(creep.memory.path != undefined) {
@@ -133,7 +143,9 @@ var roleMule = {
         }
         store: if(creep.memory.state == "store") {
             if(creep.store.getUsedCapacity() == 0) {
+                DeliveryManager.cache[DeliveryManager.name(creep.room)].deliveryCompleted(creep)
                 creep.memory.state = "collect";
+                break store
             }
             DeliveryManager.cache[DeliveryManager.name(creep.room)].planDelivery(creep)
             break store

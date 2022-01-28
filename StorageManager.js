@@ -1,5 +1,7 @@
 const SourceDesc = require('./SourceDesc');
 const Consumer = require("./Consumer")
+const SourceManager = require("./SourceManager");
+const DeliveryManager = require("./DeliveryManager");
 const ProducerMixin = require("./Producer").ProducerMixin
 
 module.exports = class StorageManager extends ProducerMixin(Consumer) {
@@ -19,14 +21,15 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
     }
 
     load() {
-        this.pos = Memory.managers[this.name].pos
-        Object.setPrototypeOf(this.pos, RoomPosition)
+        this.pos = new RoomPosition(Memory.managers[this.name].pos.x, Memory.managers[this.name].pos.y, this.room.name)
+        // Object.setPrototypeOf(this.pos, RoomPosition)
     }
 
     save() {
         Memory.managers[this.name] = {
             pos: this.pos,
-            room: this.room.name
+            room: this.room.name,
+            energyNeeded: this.energyNeeded
         }
     }
 
@@ -36,10 +39,9 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
 
     rulesTemplate() {
         return {
-            priority: 0,
-            producers: ["SrcM"]
+            priority: 4,
+            producers: [SourceManager]
         }
-
     }
 
     get energyRate() {
@@ -50,30 +52,52 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
         return null
     }
 
-    get availableEnergy() {
-        this.energyAvailable = 0
+    destination() {
 
-        Object.setPrototypeOf(this.pos, RoomPosition)
+        //TODO account for StructureContainer
+
+        //TODO account for StructureStorage
+
+        return {
+            type: "ground",
+            pos: this.pos,
+            range: 2
+        }
+    }
+
+    get availableEnergy() {
+        let energyAvailable = 0
+
         const containers = this.pos.findInRange(FIND_STRUCTURES, 2, {filter: str => str.structureType == STRUCTURE_CONTAINER})
 
         for(const container of containers) {
-            this.energyAvailable +=  container.store.getUsedCapacity(RESOURCE_ENERGY)
+            energyAvailable +=  container.store.getUsedCapacity(RESOURCE_ENERGY)
         }
 
-        const resources = this.source.pos.findInRange(FIND_DROPPED_RESOURCES, 2)
+        const resources = this.pos.findInRange(FIND_DROPPED_RESOURCES, 2)
 
         for(const res of resources) {
-            this.energyAvailable += res.amount
+            energyAvailable += res.amount
         }
 
         //TODO account for StructureStorage
+        const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
+        return energyAvailable + deliveryManager.pendingEnergy(this.name)
+    }
+
+    get energyNeeded() {
+        const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
+
+        return 1000 - this.availableEnergy - deliveryManager.pendingEnergy(this.name)
     }
 
     run() {
-
-        const [_, storageFlag] = Object.entries(Game.flags).find(([name, flag]) => (flag.room.name == this.room.name) && (name.indexOf("storage") != -1))
-        if(storageFlag) {
-            this.pos = storageFlag.pos
+        console.log(Object.entries(Game.flags) == false)
+        if(!(Object.entries(Game.flags) == false )) {
+            const [_, storageFlag] = Object.entries(Game.flags).find(([name, flag]) => (flag.room.name == this.room.name) && (name.indexOf("storage") != -1))
+            if(storageFlag) {
+                this.pos = storageFlag.pos
+            }
         }
         return
 

@@ -1,13 +1,11 @@
 const CreepPlanner = require("./CreepPlanner")
-const Consumer = require("./Consumer")
 const QueuedCreep = require("./creepUtils").QueuedCreep
 const SourceManager = require("./SourceManager")
 const DeliveryManager = require("./DeliveryManager")
 
-module.exports = class SpawnManager extends Consumer {
+module.exports = class SpawnManager {
     /** @param {Room} room */
     constructor(room, parent) {
-        super()
         this.parent = parent
         this.room = room
         if(this.name in Memory.managers) {
@@ -15,13 +13,13 @@ module.exports = class SpawnManager extends Consumer {
             return
         }
 
-        this.priority = 5
-        this.queue = []
-        this.spawn = room.find(FIND_MY_SPAWNS)[0]
+        this.priority = 3
+        /** @type Array.<Creep> */
+        this.creeps = []
     }
 
     get name() {
-        return this.room.name + "_SpnM"
+        return this.room.name + "_CnstrM"
     }
 
     get energyNeeded() {
@@ -35,24 +33,14 @@ module.exports = class SpawnManager extends Consumer {
 
     load() {
         this.priority = Memory.managers[this.name].priority
-        this.queue = Memory.managers[this.name].queue
-        this.spawn = Game.getObjectById(Memory.managers[this.name].spawn)
+        this.creeps = Memory.managers[this.name].creeps.map(creep => Game.creeps[creep]).filter(creep => creep != undefined)
     }
 
     save() {
         Memory.managers[this.name] = {
             priority: this.priority,
-            queue: this.queue,
-            spawn: this.spawn.id,
             room: this.room.name,
-            energyNeeded: this.energyNeeded
-        }
-    }
-
-    rulesTemplate() {
-        return {
-            priority: 6,
-            producers: [SourceManager]
+            creeps: this.creeps.map(creep => creep.name),
         }
     }
 
@@ -101,42 +89,18 @@ module.exports = class SpawnManager extends Consumer {
     }
 
     creepNeeded() {
+        if((this.parent.storageManager.availableEnergy / 500) > this.creeps.keys().length) {
+            return {
+                role: "builder",
+                memory: {},
+                priority: 4
+            }
+        }
         return null
-    }
-
-    /** @return {QueuedCreep} */
-    queueCreep(role, memory = {}) {
-        const creepTemplate = CreepPlanner.calculateCreep(role, this.room.energyCapacityAvailable)
-        const queuedCreep = new QueuedCreep(creepTemplate.memory.role + Memory.creepId,
-            Object.assign(creepTemplate.memory, memory), creepTemplate.parts, creepTemplate.cost)
-        if(queuedCreep.name == "harvester0") {
-            queuedCreep.parts = [WORK, MOVE]
-            queuedCreep.cost = 150
-            queuedCreep.memory.efficiency = 1
-        }
-        else if(queuedCreep.name == "mule1") {
-            queuedCreep.parts = [CARRY, CARRY, MOVE]
-            queuedCreep.cost = 150
-            queuedCreep.memory.efficiency = 2
-        }
-        Memory.creepId++
-        this.queue.push(queuedCreep)
-        return queuedCreep
     }
 
 
 
     run() {
-        if((this.queue.length > 0) && (this.spawn.spawnCreep(this.queue[0].parts, "dry_run" + Memory.creepId, {dryRun: true}) == OK)) {
-            const creepTemplate = this.queue.shift();
-            // const creepMemory = Object.assign({}, creepTemplate.memory);
-
-            // if(creepMemory.role == "mule") {
-            //     harvestPlanner.assignMule(creepMemory, room)
-            //     consumptionPlanner.assignMule(creepMemory, room)
-            // }
-            this.spawn.spawnCreep(creepTemplate.parts, creepTemplate.name, {memory: creepTemplate.memory});
-
-        }
     }
 }

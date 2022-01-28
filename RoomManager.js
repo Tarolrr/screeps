@@ -32,6 +32,7 @@ module.exports = class RoomManager {
         }
 
         this.deliveryManager.addConsumer(this.spawnManager)
+        this.deliveryManager.addConsumer(this.storageManager)
         this.sourceManagers.forEach(sourceManager => {
             this.deliveryManager.registerProducer(sourceManager)
         })

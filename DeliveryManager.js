@@ -154,16 +154,25 @@ module.exports = class DeliveryManager {
                 route.dst.planDelivery(creep.store.getUsedCapacity())
                 creep.memory.destination = route.dst.destination()
                 // creep.memory.state = "store"
-                this.plannedDeliveries[creep] = {
+                this.plannedDeliveries[creep.name] = {
                     amount: creep.store.getUsedCapacity(),
                     dst: route.dst.name
                 }
+                return
             }
         }
     }
 
     deliveries(managerName) {
+        console.log(managerName)
+        console.log(Object.entries(this.plannedDeliveries).filter(([name, dlv]) => dlv.dst == managerName).length)
         return Object.fromEntries(Object.entries(this.plannedDeliveries).filter(([name, dlv]) => dlv.dst == managerName))
+    }
+
+    pendingEnergy(managerName) {
+        let pendingEnergy = 0
+        Object.values(this.deliveries(managerName)).forEach(delivery => pendingEnergy += delivery.amount)
+        return pendingEnergy
     }
 
     deliveryCompleted(creep) {
