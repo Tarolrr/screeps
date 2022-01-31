@@ -19,13 +19,6 @@ module.exports = class DeliveryManager {
 
     /** @param {Room} room*/
     constructor(room, parent) {
-        const test2 = {a: 1, b: 2}
-        const test = Map.fromObject(test2)
-        const test3 = Array.from(test)
-        console.log(test3.length)
-        for(const [k, v] of test) {
-            console.log(k + ": " + v)
-        }
         this.room = room
         this.parent = parent
         DeliveryManager.cache[DeliveryManager.name(room)] = this
@@ -51,8 +44,7 @@ module.exports = class DeliveryManager {
         const roads = room.find(FIND_STRUCTURES,
             {filter: (s) => s.structureType == STRUCTURE_ROAD});
 
-        for(const iR in roads) {
-            const road = roads[iR];
+        for(const road of roads) {
             this.costMatrix.set(road.pos.x, road.pos.y, 1);
         }
 
@@ -98,10 +90,9 @@ module.exports = class DeliveryManager {
 
     /** @param {Consumer} cns */
     addConsumer(cns) {
-        const managers = this.parent.managers //Object.fromEntries(Object.entries(Memory.managers).filter(([name, mng]) => mng.room == this.room, this))
         const rulesTemplate = cns.rulesTemplate()
         for(const producerClassName of rulesTemplate.producers) {
-            Object.entries(managers).forEach(([name, mng]) => {
+            this.parent.managers.forEach((mng, name) => {
                 if(mng instanceof producerClassName) {
                     const distance = PathFinder.search(mng.pos, {pos: cns.pos, range: 1},
                         {roomCallback: (_) => this.costMatrix, plainCost:2, swampCost:10}).cost;
@@ -122,28 +113,28 @@ module.exports = class DeliveryManager {
     }
 
     addCreep(creep) {
-        this.producers.filter(producer => producer.name == creep.memory.src)[0].addCreep(creep)
+        this.parent.managers.filter(producer => producer.name == creep.memory.src)[0].addCreep(creep)
     }
 
     creepNeeded() {
-        for(const producer of this.producers) {
+        for(const manager of this.parent.managers) {
             let maxDist = 0
             this.routes.forEach(route => {
-                if(route.src.name == producer.name) {
+                if(route.src.name == manager.name) {
                     maxDist = route.distance > maxDist ? route.distance : maxDist
                 }
             })
-            const targetEnergyRate = producer.energyRate
+            const targetEnergyRate = manager.energyRate
             let currEnergyRate = 0
-            producer.creeps.concat(producer.creepsQueued).forEach(creep => {
+            manager.creeps.concat(manager.creepsQueued).forEach(creep => {
                 currEnergyRate += (creep.memory.efficiency * CARRY_CAPACITY) / maxDist * (creep.memory.role == "mule")
             })
 
-            if(currEnergyRate < producer.energyRate) {
+            if(currEnergyRate < manager.energyRate) {
                 return {
                     role: "mule",
                     memory: {
-                        src: producer.name
+                        src: manager.name
                     },
                     priority: 6
                 }
@@ -178,8 +169,6 @@ module.exports = class DeliveryManager {
     }
 
     deliveries(managerName) {
-        console.log(managerName)
-        console.log(Array.from(this.plannedDeliveries).filter(([name, dlv]) => dlv.dst == managerName).length)
         return new Map(Array.from(this.plannedDeliveries).filter(([name, dlv]) => dlv.dst == managerName))
     }
 

@@ -2,6 +2,7 @@ const DeliveryManager = require("./DeliveryManager")
 const SourceManager = require("./SourceManager")
 const SpawnManager = require("./SpawnManager")
 const StorageManager = require("./StorageManager")
+const ControllerManager = require("./ControllerManager")
 
 module.exports = class RoomManager {
     /** @param {Room} room */
@@ -10,10 +11,17 @@ module.exports = class RoomManager {
         this.managers = new Map()
         if(!("managers" in Memory)){
             Memory.managers = {}
+            delete Memory.wipe
+        }
+        if("wipe" in Memory) {
+            Memory.managers = {}
+            delete Memory.wipe
         }
         this.spawnManager = new SpawnManager(room, this)
         this.managers.set(this.spawnManager.name, this.spawnManager)
         this.storageManager = new StorageManager(room, this.spawnManager.spawn.pos, this)
+        this.managers.set(this.storageManager.name, this.storageManager)
+        this.controllerManager = new ControllerManager(room, this)
         this.managers.set(this.storageManager.name, this.storageManager)
 
         /** @type Array.<SourceManager> */
@@ -35,6 +43,7 @@ module.exports = class RoomManager {
             return
         }
 
+        this.deliveryManager.addConsumer(this.controllerManager)
         this.deliveryManager.addConsumer(this.spawnManager)
         this.deliveryManager.addConsumer(this.storageManager)
         this.sourceManagers.forEach(sourceManager => {
@@ -47,6 +56,7 @@ module.exports = class RoomManager {
     }
 
     run() {
+
         this.spawnManager.run()
         this.sourceManagers.forEach(srcMng => srcMng.run())
         this.storageManager.run()
@@ -59,11 +69,12 @@ module.exports = class RoomManager {
     }
 
     queueCreeps() {
+        console.log('qc')
         let creepNeeded
         do {
             creepNeeded = null
             let selectedManager
-            for(const [name, manager] of Object.entries(this.managers)) {
+            for(const [name, manager] of this.managers) {
                 const tmpCreep = manager.creepNeeded()
                 if((tmpCreep) && (!creepNeeded || (tmpCreep.priority > creepNeeded.priority))) {
                     creepNeeded = tmpCreep

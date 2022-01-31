@@ -1,57 +1,51 @@
 const CreepPlanner = require("./CreepPlanner")
 const Consumer = require("./Consumer")
 const QueuedCreep = require("./creepUtils").QueuedCreep
-const SourceManager = require("./SourceManager")
+const StorageManager = require("./StorageManager")
 const DeliveryManager = require("./DeliveryManager")
 
-module.exports = class SpawnManager extends Consumer {
+module.exports = class ControllerManager extends Consumer {
     /** @param {Room} room */
     constructor(room, parent) {
         super()
         this.parent = parent
         this.room = room
+        this.controller = room.controller
         if(this.name in Memory.managers) {
             this.load()
             return
         }
 
         this.priority = 3
-        this.controller = room.controller
+        /** @type Array.<Creep> */
+        this.creeps = []
+        /** @type Array.<QueuedCreep> */
+        this.creepsQueued = []
     }
 
     get name() {
-        return this.room.name + "_SpnM"
-    }
-
-    get energyNeeded() {
-        const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
-
-        let queueCost = 0
-        this.queue.forEach(creep => queueCost += creep.cost)
-
-        return queueCost - this.room.energyAvailable - deliveryManager.pendingEnergy(this.name)
+        return this.room.name + "_CtrlM"
     }
 
     load() {
         this.priority = Memory.managers[this.name].priority
-        this.queue = Memory.managers[this.name].queue
-        this.spawn = Game.getObjectById(Memory.managers[this.name].spawn)
+        this.creeps =       Memory.managers[this.name].creeps.map(creep => Game.creeps[creep]).filter(creep => creep != undefined)
+        this.creepsQueued = Memory.managers[this.name].creepsQueued
     }
 
     save() {
         Memory.managers[this.name] = {
             priority: this.priority,
-            queue: this.queue,
-            spawn: this.spawn.id,
-            room: this.room.name,
-            energyNeeded: this.energyNeeded
+            energyNeeded: this.energyNeeded,
+            creeps:         this.creeps.map(creep => creep.name),
+            creepsQueued:   this.creepsQueued,
         }
     }
 
     rulesTemplate() {
         return {
-            priority: 6,
-            producers: [SourceManager]
+            priority: 4,
+            producers: [StorageManager]
         }
     }
 
@@ -61,81 +55,50 @@ module.exports = class SpawnManager extends Consumer {
 
     destination() {
 
-        /** @type Array.<StructureSpawn> */
-        const spawnList = this.room.find(FIND_MY_SPAWNS);
-
-        if(spawnList.length == 0) {
-            return
-        }
-
-        for(const spawn of spawnList) {
-            if(spawn.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-                return {
-                    "type": "structure",
-                    "id": spawn.id
-                }
-            }
-        }
-
-        const extList = this.room.find(FIND_MY_STRUCTURES,
-            {filter: (s) => s.structureType == STRUCTURE_EXTENSION});
-
-        for(const extension of extList) {
-            if(extension.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-                return {
-                    "type": "structure",
-                    "id": extension.id
-                }
-            }
-        }
-
-
         return {
-            "type": "wait",
-            "pos": spawnList[0].pos,
-            "range": 2,
-            "time": 10
+            type: "ground",
+            pos: this.pos,
+            range: 2
         }
 
     }
 
     creepNeeded() {
+        if((this.availableEnergy / 500) > this.creeps.keys().length) {
+            return {
+                role: "upgrader",
+                memory: {},
+                priority: 4
+            }
+        }
         return null
     }
 
-    /** @return {QueuedCreep} */
-    queueCreep(role, memory = {}) {
-        const creepTemplate = CreepPlanner.calculateCreep(role, this.room.energyCapacityAvailable)
-        const queuedCreep = new QueuedCreep(creepTemplate.memory.role + Memory.creepId,
-            Object.assign(creepTemplate.memory, memory), creepTemplate.parts, creepTemplate.cost)
-        if(queuedCreep.name == "harvester0") {
-            queuedCreep.parts = [WORK, MOVE]
-            queuedCreep.cost = 150
-            queuedCreep.memory.efficiency = 1
+    get availableEnergy() {
+        let energyAvailable = 0
+
+        const containers = this.pos.findInRange(FIND_STRUCTURES, 2, {filter: str => str.structureType == STRUCTURE_CONTAINER})
+
+        for(const container of containers) {
+            energyAvailable +=  container.store.getUsedCapacity(RESOURCE_ENERGY)
         }
-        else if(queuedCreep.name == "mule1") {
-            queuedCreep.parts = [CARRY, CARRY, MOVE]
-            queuedCreep.cost = 150
-            queuedCreep.memory.efficiency = 2
+
+        const resources = this.pos.findInRange(FIND_DROPPED_RESOURCES, 2)
+
+        for(const res of resources) {
+            energyAvailable += res.amount
         }
-        Memory.creepId++
-        this.queue.push(queuedCreep)
-        return queuedCreep
+
+        const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
+        return energyAvailable + deliveryManager.pendingEnergy(this.name)
     }
 
+    get energyNeeded() {
+        const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
 
+        return 1000 - this.availableEnergy - deliveryManager.pendingEnergy(this.name)
+    }
 
     run() {
-        if((this.queue.length > 0) && (this.spawn.spawnCreep(this.queue[0].parts, "dry_run" + Memory.creepId, {dryRun: true}) == OK)) {
-            const creepTemplate = this.queue.shift();
-            // const creepMemory = Object.assign({}, creepTemplate.memory);
-
-            // if(creepMemory.role == "mule") {
-            //     harvestPlanner.assignMule(creepMemory, room)
-            //     consumptionPlanner.assignMule(creepMemory, room)
-            // }
-            this.spawn.spawnCreep(creepTemplate.parts, creepTemplate.name, {memory: creepTemplate.memory});
-
-        }
     }
 }

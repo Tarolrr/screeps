@@ -18,18 +18,26 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
         }
 
         this.pos = pos
+        /** @type Array.<Creep> */
+        this.creeps = []
+        /** @type Array.<QueuedCreep> */
+        this.creepsQueued = []
     }
 
     load() {
-        this.pos = new RoomPosition(Memory.this.managers.get(this.name).pos.x, Memory.managers[this.name].pos.y, this.room.name)
+        this.pos = new RoomPosition(Memory.managers[this.name].pos.x, Memory.managers[this.name].pos.y, this.room.name)
         // Object.setPrototypeOf(this.pos, RoomPosition)
+        this.creeps =       Memory.managers[this.name].creeps.map(creep => Game.creeps[creep]).filter(creep => creep != undefined)
+        this.creepsQueued = Memory.managers[this.name].creepsQueued
     }
 
     save() {
         Memory.managers[this.name] = {
             pos: this.pos,
             room: this.room.name,
-            energyNeeded: this.energyNeeded
+            energyNeeded: this.energyNeeded,
+            creeps:         this.creeps.map(creep => creep.name),
+            creepsQueued:   this.creepsQueued,
         }
     }
 
@@ -65,6 +73,11 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
         }
     }
 
+    /** @param {QueuedCreep} queuedCreep*/
+    addCreep(queuedCreep) {
+        this.creepsQueued.push(queuedCreep)
+    }
+
     get availableEnergy() {
         let energyAvailable = 0
 
@@ -92,7 +105,6 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
     }
 
     run() {
-        console.log(Object.entries(Game.flags) == false)
         if(!(Object.entries(Game.flags) == false )) {
             const [_, storageFlag] = Object.entries(Game.flags).find(([name, flag]) => (flag.room.name == this.room.name) && (name.indexOf("storage") != -1))
             if(storageFlag) {

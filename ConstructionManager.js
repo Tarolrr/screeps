@@ -3,7 +3,7 @@ const QueuedCreep = require("./creepUtils").QueuedCreep
 const SourceManager = require("./SourceManager")
 const DeliveryManager = require("./DeliveryManager")
 
-module.exports = class SpawnManager {
+module.exports = class ConstructionManager {
     /** @param {Room} room */
     constructor(room, parent) {
         this.parent = parent

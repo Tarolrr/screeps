@@ -124,12 +124,17 @@ module.exports = class SpawnManager extends Consumer {
         return queuedCreep
     }
 
-
-
     run() {
         if((this.queue.length > 0) && (this.spawn.spawnCreep(this.queue[0].parts, "dry_run" + Memory.creepId, {dryRun: true}) == OK)) {
             const creepTemplate = this.queue.shift();
             this.spawn.spawnCreep(creepTemplate.parts, creepTemplate.name, {memory: creepTemplate.memory});
         }
+        // else {
+        //     console.log(this.queue[0].parts instanceof Array)
+        //     const test = Array.from(this.queue[0].parts)
+        //     console.log(test[1] instanceof Array)
+        //     console.log([MOVE, WORK, WORK][2] === test[2])
+        //     console.log(this.spawn.spawnCreep(new Array(MOVE, WORK, WORK), "123456", {dryRun: true}))
+        // }
     }
 }
