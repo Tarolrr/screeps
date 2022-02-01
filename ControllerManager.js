@@ -21,6 +21,7 @@ module.exports = class ControllerManager extends Consumer {
         this.creeps = []
         /** @type Array.<QueuedCreep> */
         this.creepsQueued = []
+        this.pos = this.controller.pos
     }
 
     get name() {
@@ -29,6 +30,7 @@ module.exports = class ControllerManager extends Consumer {
 
     load() {
         this.priority = Memory.managers[this.name].priority
+        this.pos = new RoomPosition(Memory.managers[this.name].pos.x, Memory.managers[this.name].pos.y, this.room.name)
         this.creeps =       Memory.managers[this.name].creeps.map(creep => Game.creeps[creep]).filter(creep => creep != undefined)
         this.creepsQueued = Memory.managers[this.name].creepsQueued
     }
@@ -37,6 +39,7 @@ module.exports = class ControllerManager extends Consumer {
         Memory.managers[this.name] = {
             priority: this.priority,
             energyNeeded: this.energyNeeded,
+            pos: this.pos,
             creeps:         this.creeps.map(creep => creep.name),
             creepsQueued:   this.creepsQueued,
         }
@@ -47,10 +50,6 @@ module.exports = class ControllerManager extends Consumer {
             priority: 4,
             producers: [StorageManager]
         }
-    }
-
-    get pos() {
-        return this.spawn.pos
     }
 
     destination() {
@@ -64,7 +63,9 @@ module.exports = class ControllerManager extends Consumer {
     }
 
     creepNeeded() {
-        if((this.availableEnergy / 500) > this.creeps.keys().length) {
+        console.log("test123")
+        if((this.availableEnergy / 500) > this.creeps.concat(this.creepsQueued).length) {
+            console.log("test123")
             return {
                 role: "upgrader",
                 memory: {},
@@ -73,6 +74,12 @@ module.exports = class ControllerManager extends Consumer {
         }
         return null
     }
+
+    /** @param {QueuedCreep} queuedCreep*/
+    addCreep(queuedCreep) {
+        this.creepsQueued.push(queuedCreep)
+    }
+
 
     get availableEnergy() {
         let energyAvailable = 0
@@ -96,9 +103,14 @@ module.exports = class ControllerManager extends Consumer {
     get energyNeeded() {
         const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
 
-        return 1000 - this.availableEnergy - deliveryManager.pendingEnergy(this.name)
+        return 3000 - this.availableEnergy - deliveryManager.pendingEnergy(this.name)
     }
 
     run() {
+
+        this.creepsQueued.forEach(creep => {
+            if(creep.name in Game.creeps) {this.creeps.push(Game.creeps[creep.name])}
+        })
+        this.creepsQueued = this.creepsQueued.filter(creep => !(creep.name in Game.creeps))
     }
 }

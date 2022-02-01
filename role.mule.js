@@ -51,15 +51,42 @@ var roleMule = {
                 }
             }
             else if(destination.type == "ground") {
-                const pos = new RoomPosition(destination.pos.x, destination.pos.y, creep.room.name)
-                if(creep.pos.getRangeTo(pos) > destination.range) {
-                    creep.moveTo(pos)
+
+
+                if(creep.memory.state == "collect") {
+
+                    const pos = new RoomPosition(destination.pos.x, destination.pos.y, creep.room.name)
+                    const objList = pos.findInRange(FIND_DROPPED_RESOURCES, destination.range)
+                    let res
+                    if(objList.length == 0) {
+                        delete creep.memory.destination
+                        return
+
+                    }
+                    else {
+                        res = objList[0]
+                    }
+
+                    if(creep.pos.getRangeTo(res.pos) > 1) {
+                        creep.moveTo(res.pos)
+                    }
+                    else {
+                        creep.pickup(res)
+                        delete creep.memory.destination
+                    }
+                    return
                 }
                 else {
-                    creep.drop(RESOURCE_ENERGY)
-                    delete creep.memory.destination
+
+                    const pos = new RoomPosition(destination.pos.x, destination.pos.y, creep.room.name)
+                    if (creep.pos.getRangeTo(pos) > destination.range) {
+                        creep.moveTo(pos)
+                    } else {
+                        creep.drop(RESOURCE_ENERGY)
+                        delete creep.memory.destination
+                    }
+                    return
                 }
-                return
             }
         }
         // if(creep.memory.path != undefined) {
@@ -115,7 +142,8 @@ var roleMule = {
                 creep.memory.state = "store";
                 break collect
             }
-            const src = DeliveryManager.cache[DeliveryManager.name(creep.room)].producers.filter(prd => prd.name == creep.memory.src)[0]
+            const src = DeliveryManager.cache[DeliveryManager.name(creep.room)].parent.managers.filter(([name, prd]) => prd.name == creep.memory.src).values().next().value
+            console.log(src.name)
             creep.memory.destination = src.destination()
 
             // let size = 0;

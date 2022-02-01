@@ -48,6 +48,7 @@ module.exports.loop = function () {
         console.log("CPU " + Game.cpu.getUsed())
     }
     catch (e) {
-        console.log(e)
+        // console.log(e)
+        console.log(e.stack)
     }
 }

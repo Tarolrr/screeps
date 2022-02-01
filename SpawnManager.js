@@ -106,6 +106,23 @@ module.exports = class SpawnManager extends Consumer {
 
     /** @return {QueuedCreep} */
     queueCreep(role, memory = {}) {
+        //check stall condition
+        let stalled = false
+
+        for(const mng of this.parent.sourceManagers) {
+            if(mng.creeps.length == 0) {
+                stalled = true
+            }
+        }
+
+        let capacity = this.room.energyCapacityAvailable
+
+        if(stalled) {
+            this.queue = [] /// !!! wont work!
+            capacity = 300
+        }
+
+
         const creepTemplate = CreepPlanner.calculateCreep(role, this.room.energyCapacityAvailable)
         const queuedCreep = new QueuedCreep(creepTemplate.memory.role + Memory.creepId,
             Object.assign(creepTemplate.memory, memory), creepTemplate.parts, creepTemplate.cost)

@@ -22,7 +22,7 @@ module.exports = class RoomManager {
         this.storageManager = new StorageManager(room, this.spawnManager.spawn.pos, this)
         this.managers.set(this.storageManager.name, this.storageManager)
         this.controllerManager = new ControllerManager(room, this)
-        this.managers.set(this.storageManager.name, this.storageManager)
+        this.managers.set(this.controllerManager.name, this.controllerManager)
 
         /** @type Array.<SourceManager> */
         this.sourceManagers = []
@@ -61,6 +61,7 @@ module.exports = class RoomManager {
         this.sourceManagers.forEach(srcMng => srcMng.run())
         this.storageManager.run()
         this.deliveryManager.run()
+        this.controllerManager.run()
         this.queueCreeps()
         this.save()
     }
@@ -69,7 +70,6 @@ module.exports = class RoomManager {
     }
 
     queueCreeps() {
-        console.log('qc')
         let creepNeeded
         do {
             creepNeeded = null
@@ -83,6 +83,7 @@ module.exports = class RoomManager {
             }
             if(creepNeeded) {
                 const queuedCreep = this.spawnManager.queueCreep(creepNeeded.role, creepNeeded.memory)
+                console.log(queuedCreep.memory.src + " " + selectedManager.name)
                 selectedManager.addCreep(queuedCreep)
             }
         } while(creepNeeded)
@@ -96,6 +97,7 @@ module.exports = class RoomManager {
         this.spawnManager.save()
         this.storageManager.save()
         this.deliveryManager.save()
+        this.controllerManager.save()
 
         for(const sourceManager of this.sourceManagers) {
             sourceManager.save()

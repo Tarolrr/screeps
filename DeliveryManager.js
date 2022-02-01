@@ -113,17 +113,23 @@ module.exports = class DeliveryManager {
     }
 
     addCreep(creep) {
-        this.parent.managers.filter(producer => producer.name == creep.memory.src)[0].addCreep(creep)
+        console.log(Object.keys(this.parent.managers.filter(([name, producer]) => producer.name == creep.memory.src).values().next().value))
+        this.parent.managers.filter(([name, producer]) => producer.name == creep.memory.src).values().next().value.addCreep(creep)
     }
 
     creepNeeded() {
-        for(const manager of this.parent.managers) {
+        for(const [name, manager] of this.parent.managers) {
             let maxDist = 0
             this.routes.forEach(route => {
-                if(route.src.name == manager.name) {
+                if(route.src.name == name) {
                     maxDist = route.distance > maxDist ? route.distance : maxDist
                 }
             })
+
+            if(manager.energyRate == undefined) {
+                continue
+            }
+
             const targetEnergyRate = manager.energyRate
             let currEnergyRate = 0
             manager.creeps.concat(manager.creepsQueued).forEach(creep => {
@@ -134,7 +140,7 @@ module.exports = class DeliveryManager {
                 return {
                     role: "mule",
                     memory: {
-                        src: manager.name
+                        src: name
                     },
                     priority: 6
                 }
@@ -156,6 +162,7 @@ module.exports = class DeliveryManager {
         let selectedRoute = null
         for(const route of this.routes) {
             if((creep.memory.src == route.src.name) && (route.dst.energyNeeded > 0)) {
+                console.log(route.src.name)
                 route.dst.planDelivery(creep.store.getUsedCapacity())
                 creep.memory.destination = route.dst.destination()
                 // creep.memory.state = "store"

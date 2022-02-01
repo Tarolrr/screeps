@@ -35,7 +35,9 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
         Memory.managers[this.name] = {
             pos: this.pos,
             room: this.room.name,
+            energyRate: this.energyRate,
             energyNeeded: this.energyNeeded,
+            availableEnergy: this.availableEnergy,
             creeps:         this.creeps.map(creep => creep.name),
             creepsQueued:   this.creepsQueued,
         }
@@ -53,7 +55,7 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
     }
 
     get energyRate() {
-        return 10
+        return Math.floor(this.availableEnergy/100)
     }
 
     creepNeeded() {
@@ -65,7 +67,7 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
         //TODO account for StructureContainer
 
         //TODO account for StructureStorage
-
+        console.log("test")
         return {
             type: "ground",
             pos: this.pos,
@@ -101,7 +103,7 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
     get energyNeeded() {
         const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
 
-        return 1000 - this.availableEnergy - deliveryManager.pendingEnergy(this.name)
+        return 3000 - this.availableEnergy - deliveryManager.pendingEnergy(this.name)
     }
 
     run() {
@@ -111,6 +113,11 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
                 this.pos = storageFlag.pos
             }
         }
+
+        this.creepsQueued.forEach(creep => {
+            if(creep.name in Game.creeps) {this.creeps.push(Game.creeps[creep.name])}
+        })
+        this.creepsQueued = this.creepsQueued.filter(creep => !(creep.name in Game.creeps))
         return
 
         /** @type Array.<Source> */
