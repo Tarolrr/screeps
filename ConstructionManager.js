@@ -115,12 +115,28 @@ module.exports = class ConstructionManager extends Manager {
     }
 
     findExtensionPos() {
-        let safetyCtr = 0
-        let currentPosition = this.room.find(FIND_MY_SPAWNS)[0].pos
-        let currentRange = 0
-        let currentPosIdx = 0
-        while(safetyCtr++ < 100) {
-            currentPosition.
+        let spawnPosition = this.room.find(FIND_MY_SPAWNS)[0].pos
+        for(let range = 1; range <= 6; range++) {
+            for(let idx = 0; idx < range * 4; idx++) {
+                const pos = {x: 0, y: 0}
+                if(idx < range) {
+                    pos.x = (idx % range) * 2 - range
+                    pos.y = -range
+                }
+                else if(idx < range * 2) {
+                    pos.x = range
+                    pos.y = (idx % range) * 2 - range
+                }
+                else if(idx < range * 3) {
+                    pos.x = range - (idx % range) * 2
+                    pos.y = range
+                }
+                else {
+                    pos.x = -range
+                    pos.y = range - (idx % range) * 2
+                }
+            }
+            this.room.getPositionAt(spawnPosition.x + pos.x, spawnPosition.y + pos.t).lookFor()
         }
     }
 }
