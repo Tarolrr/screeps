@@ -1,9 +1,11 @@
 const SourceDesc = require('./SourceDesc');
+const CreepOwner = require("./CreepOwner");
+const Manager = require("./Manager");
 const ProducerMixin = require("./Producer").ProducerMixin
 const Producer = require("./Producer").Producer
 const QueuedCreep = require("./creepUtils").QueuedCreep
 
-module.exports = class SourceManager extends ProducerMixin(Object) {
+module.exports = class SourceManager extends Manager {
 
     // static cache = {}
 
@@ -14,10 +16,9 @@ module.exports = class SourceManager extends ProducerMixin(Object) {
     /** @param {Room} room
      *  @param {Source} source*/
     constructor(room, source, parent) {
-        super()
+        super(room, parent)
+        this.creepOwner = new CreepOwner(this)
 
-        this.parent = parent
-        this.room = room
         this.source = source
         SourceManager.cache[SourceManager.name(room, source)]
         if(this.name in Memory.managers) {
@@ -41,12 +42,6 @@ module.exports = class SourceManager extends ProducerMixin(Object) {
         this.freePlaces = this.workPlaces.length;
         this.needWork = Math.ceil(source.energyCapacity / 300 / 2);
         this.hasWork = 0;
-        /** @type Array.<Creep> */
-        this.creeps = []
-        /** @type Array.<Creep> */
-        // this.mules = []
-        /** @type Array.<QueuedCreep> */
-        this.creepsQueued = []
         // const spawn = source.room.find(FIND_MY_SPAWNS)[0];
         // this.timeTo = PathFinder.search(spawn.pos, {pos: source.pos, range: 1}).cost;
         //
@@ -58,14 +53,14 @@ module.exports = class SourceManager extends ProducerMixin(Object) {
     }
 
     load() {
-        this.workPlaces =   Memory.managers[this.name].workPlaces
-        this.freePlaces =   Memory.managers[this.name].freePlaces
-        this.needWork =     Memory.managers[this.name].needWork
-        this.hasWork =      Memory.managers[this.name].hasWork
-        this.creeps =       Memory.managers[this.name].creeps.map(creep => Game.creeps[creep]).filter(creep => creep != undefined)
-        // this.mules =        Memory.managers[this.name].mules.map(creep => Game.creeps[creep])
-        this.source =       Game.getObjectById(Memory.managers[this.name].source)
-        this.creepsQueued = Memory.managers[this.name].creepsQueued
+        const managerMemory = Memory.managers[this.name]
+        this.creepOwner.load(managerMemory)
+
+        this.workPlaces =   managerMemory.workPlaces
+        this.freePlaces =   managerMemory.freePlaces
+        this.needWork =     managerMemory.needWork
+        this.hasWork =      managerMemory.hasWork
+        this.source =       Game.getObjectById(managerMemory.source)
     }
 
     save() {
@@ -74,12 +69,9 @@ module.exports = class SourceManager extends ProducerMixin(Object) {
             freePlaces:     this.freePlaces,
             needWork:       this.needWork,
             hasWork:        this.hasWork,
-            creeps:         this.creeps.map(creep => creep.name),
-            // mules:          this.mules.map(creep => creep.name),
-            creepsQueued:   this.creepsQueued,
-            source:         this.source.id,
-            room:           this.room.name
+            source:         this.source.id
         }
+        this.creepOwner.save(Memory.managers[this.name])
     }
 
     get name() {
@@ -153,19 +145,10 @@ module.exports = class SourceManager extends ProducerMixin(Object) {
             // TODO add has work
         }
         return null
-        // const roomManager = this.parent
-        // TODO change to `assignedManager`
-        // const queuedCreep = roomManager.spawnManager.queueCreep("harvester", {assignedSource: this.source.id})
-        // if(queuedCreep != null) {
-        //     this.creepsQueued.push(queuedCreep)
-        //     this.freePlaces--
-        //     this.hasWork += queuedCreep.memory.efficiency
-        // }
     }
 
     /** @param {QueuedCreep} queuedCreep*/
     addCreep(queuedCreep) {
-        this.creepsQueued.push(queuedCreep)
         if(queuedCreep.memory.role == "harvester") {
             this.freePlaces--
             this.hasWork += queuedCreep.memory.efficiency
@@ -173,42 +156,14 @@ module.exports = class SourceManager extends ProducerMixin(Object) {
     }
 
     run() {
-        this.creepsQueued.forEach(creep => {
-            if(creep.name in Game.creeps) {this.creeps.push(Game.creeps[creep.name])}
-        })
-        // check if all creeps are alive
-        // this.creeps = this.creeps.filter(creep => creep in Game.creeps)
-        this.creepsQueued = this.creepsQueued.filter(creep => !(creep.name in Game.creeps))
+        this.creepOwner.run()
 
         this.hasWork = 0
-        const harvesters = this.creeps.concat(this.creepsQueued).filter(creep => creep.memory.role == "harvester")
+        const harvesters = this.creepOwner.creeps.concat(this.creepOwner.creepsQueued).filter(creep => creep.memory.role == "harvester")
         harvesters.forEach(creep => this.hasWork += creep.memory.efficiency)
         this.freePlaces = this.workPlaces.length - harvesters.length
-
-        // while((this.freePlaces > 0) && (this.hasWork < this.needWork)) {
-        //     const roomManager = this.parent
-        //     //TODO change to `assignedManager`
-        //     // const queuedCreep = roomManager.spawnManager.queueCreep("harvester", {assignedSource: this.source.id})
-        //     // if(queuedCreep != null) {
-        //     //     this.creepsQueued.push(queuedCreep)
-        //     //     this.freePlaces--
-        //     //     this.hasWork += queuedCreep.memory.efficiency
-        //     // }
-        //
-        // }
     }
 
-    assignHarvester(creepMemory, room) {
-        for(const srcId in room.memory.srcDescs){
-            const srcDesc = room.memory.srcDescs[srcId];
-            if((srcDesc.freePlaces > 0) && (srcDesc.needWork > srcDesc.hasWork)){
-                srcDesc.freePlaces--;
-                srcDesc.hasWork += creepMemory.efficiency;
-                creepMemory.assigned_source = srcId;
-                break;
-            }
-        }
-    }
 }
 
 module.exports.cache = {}

@@ -84,7 +84,7 @@ module.exports = class RoomManager {
             if(creepNeeded) {
                 const queuedCreep = this.spawnManager.queueCreep(creepNeeded.role, creepNeeded.memory)
                 console.log(queuedCreep.memory.src + " " + selectedManager.name)
-                selectedManager.addCreep(queuedCreep)
+                selectedManager.creepOwner.addCreep(queuedCreep)
             }
         } while(creepNeeded)
     }

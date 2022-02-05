@@ -1,9 +1,11 @@
 "use strict";
 
 const Consumer = require("./Consumer")
+const Manager = require("./Manager");
+const CreepOwner = require("./CreepOwner");
 const Producer = require("./Producer").Producer
 
-module.exports = class DeliveryManager {
+module.exports = class DeliveryManager extends Manager{
 
     /** @type Object.<string, DeliveryManager> */
 
@@ -19,8 +21,9 @@ module.exports = class DeliveryManager {
 
     /** @param {Room} room*/
     constructor(room, parent) {
-        this.room = room
-        this.parent = parent
+        super(room, parent)
+        this.creepOwner = new CreepOwner(this)
+
         DeliveryManager.cache[DeliveryManager.name(room)] = this
         if(this.name in Memory.managers) {
             this.load()
@@ -30,8 +33,6 @@ module.exports = class DeliveryManager {
         this.routes = []
         /** @type Array.<Producer> */
         this.producers = []
-        /** @type Array.<Creep> */
-        this.creeps = []
         // memorable
         this.plannedDeliveries = new Map()
 
@@ -54,7 +55,6 @@ module.exports = class DeliveryManager {
     }
 
     load() {
-        this.creeps =       Memory.managers[this.name].creeps.map(creep => Game.creeps[creep])
         this.routes =       Memory.managers[this.name].routes.map(route => {
             return {
                 src: this.parent.managers.get(route.src),
@@ -70,8 +70,6 @@ module.exports = class DeliveryManager {
 
     save() {
         Memory.managers[this.name] = {
-            creeps:     this.creeps.map(creep => creep.name),
-            room:       this.room.name,
             routes:      this.routes.map(route => {return {
                 src: route.src.name,
                 dst: route.dst.name,
@@ -86,6 +84,10 @@ module.exports = class DeliveryManager {
 
     get name() {
         return this.room.name + "_DlvM"
+    }
+
+    get features() {
+        return new Set(["CreepOwner"])
     }
 
     /** @param {Consumer} cns */
@@ -113,8 +115,8 @@ module.exports = class DeliveryManager {
     }
 
     addCreep(creep) {
-        console.log(Object.keys(this.parent.managers.filter(([name, producer]) => producer.name == creep.memory.src).values().next().value))
-        this.parent.managers.filter(([name, producer]) => producer.name == creep.memory.src).values().next().value.addCreep(creep)
+        this.creepOwner.creepsQueued = []
+        this.parent.managers.filter(([name, producer]) => producer.name == creep.memory.src).values().next().value.creepOwner.addCreep(creep)
     }
 
     creepNeeded() {
@@ -132,7 +134,7 @@ module.exports = class DeliveryManager {
 
             const targetEnergyRate = manager.energyRate
             let currEnergyRate = 0
-            manager.creeps.concat(manager.creepsQueued).forEach(creep => {
+            manager.creepOwner.creeps.concat(manager.creepOwner.creepsQueued).forEach(creep => {
                 currEnergyRate += (creep.memory.efficiency * CARRY_CAPACITY) / maxDist * (creep.memory.role == "mule")
             })
 
@@ -162,7 +164,6 @@ module.exports = class DeliveryManager {
         let selectedRoute = null
         for(const route of this.routes) {
             if((creep.memory.src == route.src.name) && (route.dst.energyNeeded > 0)) {
-                console.log(route.src.name)
                 route.dst.planDelivery(creep.store.getUsedCapacity())
                 creep.memory.destination = route.dst.destination()
                 // creep.memory.state = "store"

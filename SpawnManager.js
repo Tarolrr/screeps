@@ -3,13 +3,13 @@ const Consumer = require("./Consumer")
 const QueuedCreep = require("./creepUtils").QueuedCreep
 const SourceManager = require("./SourceManager")
 const DeliveryManager = require("./DeliveryManager")
+const Manager = require("./Manager");
 
-module.exports = class SpawnManager extends Consumer {
+module.exports = class SpawnManager extends Manager {
     /** @param {Room} room */
     constructor(room, parent) {
-        super()
-        this.parent = parent
-        this.room = room
+        super(room, parent)
+
         if(this.name in Memory.managers) {
             this.load()
             return
@@ -44,7 +44,6 @@ module.exports = class SpawnManager extends Consumer {
             priority: this.priority,
             queue: this.queue,
             spawn: this.spawn.id,
-            room: this.room.name,
             energyNeeded: this.energyNeeded
         }
     }
@@ -110,17 +109,17 @@ module.exports = class SpawnManager extends Consumer {
         let stalled = false
 
         for(const mng of this.parent.sourceManagers) {
-            if(mng.creeps.length == 0) {
+            if(mng.creepOwner.creeps.length == 0) {
                 stalled = true
             }
         }
 
         let capacity = this.room.energyCapacityAvailable
 
-        if(stalled) {
-            this.queue = [] /// !!! wont work!
-            capacity = 300
-        }
+        // if(stalled) {
+        //     this.queue = [] /// !!! wont work!
+        //     capacity = 300
+        // }
 
 
         const creepTemplate = CreepPlanner.calculateCreep(role, this.room.energyCapacityAvailable)
@@ -144,9 +143,9 @@ module.exports = class SpawnManager extends Consumer {
     run() {
 
         for(const [name, mng] of this.parent.managers) {
-            if(mng.creepsQueued) {
+            if(mng.features.has("CreepOwner")) {
                 console.log(mng.name)
-                mng.creepsQueued = mng.creepsQueued.filter(creep => {
+                mng.creepOwner.creepsQueued = mng.creepOwner.creepsQueued.filter(creep => {
                     for(const creep2 of this.queue) {
                         if(creep.name == creep2.name) {
                             return true

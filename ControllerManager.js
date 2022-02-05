@@ -3,13 +3,15 @@ const Consumer = require("./Consumer")
 const QueuedCreep = require("./creepUtils").QueuedCreep
 const StorageManager = require("./StorageManager")
 const DeliveryManager = require("./DeliveryManager")
+const CreepOwner = require("./CreepOwner")
+const Manager = require("./Manager");
 
-module.exports = class ControllerManager extends Consumer {
+module.exports = class ControllerManager extends Manager {
     /** @param {Room} room */
     constructor(room, parent) {
-        super()
-        this.parent = parent
-        this.room = room
+        super(room, parent)
+        this.creepOwner = new CreepOwner(this)
+
         this.controller = room.controller
         if(this.name in Memory.managers) {
             this.load()
@@ -17,11 +19,12 @@ module.exports = class ControllerManager extends Consumer {
         }
 
         this.priority = 3
-        /** @type Array.<Creep> */
-        this.creeps = []
-        /** @type Array.<QueuedCreep> */
-        this.creepsQueued = []
+
         this.pos = this.controller.pos
+    }
+
+    get features() {
+        return new Set(["CreepOwner"])
     }
 
     get name() {
@@ -29,10 +32,11 @@ module.exports = class ControllerManager extends Consumer {
     }
 
     load() {
+        const managerMemory = Memory.managers[this.name]
+        this.creepOwner.load(managerMemory)
+
         this.priority = Memory.managers[this.name].priority
         this.pos = new RoomPosition(Memory.managers[this.name].pos.x, Memory.managers[this.name].pos.y, this.room.name)
-        this.creeps =       Memory.managers[this.name].creeps.map(creep => Game.creeps[creep]).filter(creep => creep != undefined)
-        this.creepsQueued = Memory.managers[this.name].creepsQueued
     }
 
     save() {
@@ -40,9 +44,8 @@ module.exports = class ControllerManager extends Consumer {
             priority: this.priority,
             energyNeeded: this.energyNeeded,
             pos: this.pos,
-            creeps:         this.creeps.map(creep => creep.name),
-            creepsQueued:   this.creepsQueued,
         }
+        this.creepOwner.save(Memory.managers[this.name])
     }
 
     rulesTemplate() {
@@ -64,7 +67,7 @@ module.exports = class ControllerManager extends Consumer {
 
     creepNeeded() {
         console.log("test123")
-        if((this.availableEnergy / 500) > this.creeps.concat(this.creepsQueued).length) {
+        if((this.availableEnergy / 500) > this.creepOwner.creeps.concat(this.creepOwner.creepsQueued).length) {
             console.log("test123")
             return {
                 role: "upgrader",
@@ -74,12 +77,6 @@ module.exports = class ControllerManager extends Consumer {
         }
         return null
     }
-
-    /** @param {QueuedCreep} queuedCreep*/
-    addCreep(queuedCreep) {
-        this.creepsQueued.push(queuedCreep)
-    }
-
 
     get availableEnergy() {
         let energyAvailable = 0
@@ -107,10 +104,6 @@ module.exports = class ControllerManager extends Consumer {
     }
 
     run() {
-
-        this.creepsQueued.forEach(creep => {
-            if(creep.name in Game.creeps) {this.creeps.push(Game.creeps[creep.name])}
-        })
-        this.creepsQueued = this.creepsQueued.filter(creep => !(creep.name in Game.creeps))
+        this.creepOwner.run()
     }
 }

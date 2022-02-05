@@ -2,49 +2,48 @@ const SourceDesc = require('./SourceDesc');
 const Consumer = require("./Consumer")
 const SourceManager = require("./SourceManager");
 const DeliveryManager = require("./DeliveryManager");
+const CreepOwner = require("./CreepOwner");
+const Manager = require("./Manager");
 const ProducerMixin = require("./Producer").ProducerMixin
 
-module.exports = class StorageManager extends ProducerMixin(Consumer) {
+module.exports = class StorageManager extends Manager {
     /** @param {Room} room
      *  @param {RoomPosition} pos */
     constructor(room, pos, parent) {
-        super()
+        super(room, parent)
+        this.creepOwner = new CreepOwner(this)
+        this.pos = pos
 
-        this.parent = parent
-        this.room = room
         if(this.name in Memory.managers) {
             this.load()
             return
         }
 
-        this.pos = pos
-        /** @type Array.<Creep> */
-        this.creeps = []
-        /** @type Array.<QueuedCreep> */
-        this.creepsQueued = []
     }
 
     load() {
-        this.pos = new RoomPosition(Memory.managers[this.name].pos.x, Memory.managers[this.name].pos.y, this.room.name)
-        // Object.setPrototypeOf(this.pos, RoomPosition)
-        this.creeps =       Memory.managers[this.name].creeps.map(creep => Game.creeps[creep]).filter(creep => creep != undefined)
-        this.creepsQueued = Memory.managers[this.name].creepsQueued
+        const managerMemory = Memory.managers[this.name]
+        this.creepOwner.load(managerMemory)
+
+        this.pos = new RoomPosition(managerMemory.pos.x, managerMemory.pos.y, this.room.name)
     }
 
     save() {
         Memory.managers[this.name] = {
             pos: this.pos,
-            room: this.room.name,
             energyRate: this.energyRate,
             energyNeeded: this.energyNeeded,
-            availableEnergy: this.availableEnergy,
-            creeps:         this.creeps.map(creep => creep.name),
-            creepsQueued:   this.creepsQueued,
+            availableEnergy: this.availableEnergy
         }
+        this.creepOwner.save(Memory.managers[this.name])
     }
 
     get name() {
         return this.room.name + "_StrM"
+    }
+
+    get features() {
+        return new Set(["CreepOwner"])
     }
 
     rulesTemplate() {
@@ -75,11 +74,6 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
         }
     }
 
-    /** @param {QueuedCreep} queuedCreep*/
-    addCreep(queuedCreep) {
-        this.creepsQueued.push(queuedCreep)
-    }
-
     get availableEnergy() {
         let energyAvailable = 0
 
@@ -107,6 +101,8 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
     }
 
     run() {
+        this.creepOwner.run()
+
         if(!(Object.entries(Game.flags) == false )) {
             const [_, storageFlag] = Object.entries(Game.flags).find(([name, flag]) => (flag.room.name == this.room.name) && (name.indexOf("storage") != -1))
             if(storageFlag) {
@@ -114,10 +110,6 @@ module.exports = class StorageManager extends ProducerMixin(Consumer) {
             }
         }
 
-        this.creepsQueued.forEach(creep => {
-            if(creep.name in Game.creeps) {this.creeps.push(Game.creeps[creep.name])}
-        })
-        this.creepsQueued = this.creepsQueued.filter(creep => !(creep.name in Game.creeps))
         return
 
         /** @type Array.<Source> */

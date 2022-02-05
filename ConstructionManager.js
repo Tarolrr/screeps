@@ -1,95 +1,69 @@
-const CreepPlanner = require("./CreepPlanner")
-const QueuedCreep = require("./creepUtils").QueuedCreep
-const SourceManager = require("./SourceManager")
-const DeliveryManager = require("./DeliveryManager")
+const CreepOwner = require("./CreepOwner")
+const Manager = require("./Manager");
 
-module.exports = class ConstructionManager {
+module.exports = class ConstructionManager extends Manager {
     /** @param {Room} room */
     constructor(room, parent) {
-        this.parent = parent
-        this.room = room
+        super(room, parent)
+        this.creepOwner = new CreepOwner(this)
+
+        this.controller = room.controller
         if(this.name in Memory.managers) {
             this.load()
             return
         }
 
         this.priority = 3
-        /** @type Array.<Creep> */
-        this.creeps = []
-        /** @type Array.<QueuedCreep> */
-        this.creepsQueued = []
+        this.queue = []
+        this.pos = this.controller.pos
+    }
+
+    get features() {
+        return new Set(["CreepOwner"])
     }
 
     get name() {
-        return this.room.name + "_CnstrM"
+        return this.room.name + "_CtrlM"
     }
-    //
-    // get energyNeeded() {
-    //     const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
-    //
-    //     let queueCost = 0
-    //     this.queue.forEach(creep => queueCost += creep.cost)
-    //
-    //     return queueCost - this.room.energyAvailable - deliveryManager.pendingEnergy(this.name)
-    // }
 
     load() {
+        const managerMemory = Memory.managers[this.name]
+        this.creepOwner.load(managerMemory)
+
         this.priority = Memory.managers[this.name].priority
-        this.creeps = Memory.managers[this.name].creeps.map(creep => Game.creeps[creep]).filter(creep => creep != undefined)
-        this.creepsQueued = Memory.managers[this.name].creepsQueued
+        this.pos = new RoomPosition(Memory.managers[this.name].pos.x, Memory.managers[this.name].pos.y, this.room.name)
     }
 
     save() {
         Memory.managers[this.name] = {
             priority: this.priority,
-            room: this.room.name,
-            creeps: this.creeps.map(creep => creep.name),
-            creepsQueued:   this.creepsQueued,
+            energyNeeded: this.energyNeeded,
+            pos: this.pos,
+        }
+        this.creepOwner.save(Memory.managers[this.name])
+    }
+
+    rulesTemplate() {
+        return {
+            priority: 4,
+            producers: [StorageManager]
         }
     }
 
-    // destination() {
-    //
-    //     /** @type Array.<StructureSpawn> */
-    //     const spawnList = this.room.find(FIND_MY_SPAWNS);
-    //
-    //     if(spawnList.length == 0) {
-    //         return
-    //     }
-    //
-    //     for(const spawn of spawnList) {
-    //         if(spawn.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-    //             return {
-    //                 "type": "structure",
-    //                 "id": spawn.id
-    //             }
-    //         }
-    //     }
-    //
-    //     const extList = this.room.find(FIND_MY_STRUCTURES,
-    //         {filter: (s) => s.structureType == STRUCTURE_EXTENSION});
-    //
-    //     for(const extension of extList) {
-    //         if(extension.store.getFreeCapacity(RESOURCE_ENERGY) > 0) {
-    //             return {
-    //                 "type": "structure",
-    //                 "id": extension.id
-    //             }
-    //         }
-    //     }
-    //
-    //
-    //     return {
-    //         "type": "wait",
-    //         "pos": spawnList[0].pos,
-    //         "range": 2,
-    //         "time": 10
-    //     }
-    //
-    // }
+    destination() {
+
+        return {
+            type: "ground",
+            pos: this.pos,
+            range: 2
+        }
+
+    }
 
     creepNeeded() {
-        if((this.parent.storageManager.availableEnergy / 500) > this.creeps.keys().length) {
+        console.log("test123")
+        if((this.availableEnergy / 500) > this.creepOwner.creeps.concat(this.creepOwner.creepsQueued).length) {
+            console.log("test123")
             return {
                 role: "builder",
                 memory: {},
@@ -99,13 +73,54 @@ module.exports = class ConstructionManager {
         return null
     }
 
-    /** @param {QueuedCreep} queuedCreep*/
-    addCreep(queuedCreep) {
-        this.creepsQueued.push(queuedCreep)
+    get availableEnergy() {
+        let energyAvailable = 0
+
+        const containers = this.pos.findInRange(FIND_STRUCTURES, 2, {filter: str => str.structureType == STRUCTURE_CONTAINER})
+
+        for(const container of containers) {
+            energyAvailable +=  container.store.getUsedCapacity(RESOURCE_ENERGY)
+        }
+
+        const resources = this.pos.findInRange(FIND_DROPPED_RESOURCES, 2)
+
+        for(const res of resources) {
+            energyAvailable += res.amount
+        }
+
+        const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
+        return energyAvailable + deliveryManager.pendingEnergy(this.name)
+    }
+
+    get energyNeeded() {
+        const deliveryManager = DeliveryManager.cache[DeliveryManager.name(this.room)]
+
+        return 3000 - this.availableEnergy - deliveryManager.pendingEnergy(this.name)
     }
 
     run() {
-        this.creepsQueued.filter(creep => creep.name in Game.creeps).forEach(creep => this.creeps.push(Game.creeps[creep.name]))
-        this.creepsQueued = this.creepsQueued.filter(creep => !(creep.name in Game.creeps))
+        this.creepOwner.run()
+    }
+
+    queueConstructionSite() {
+        // process extensions
+    }
+
+    queueExtension() {
+        const builtExtensions = this.room.find(FIND_MY_STRUCTURES, {filter: {structureType: STRUCTURE_EXTENSION}})
+        const queuedExtensions = this.room.find(FIND_MY_CONSTRUCTION_SITES, {filter: {structureType: STRUCTURE_EXTENSION}})
+        if(CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.room.controller.level] > builtExtensions.length + queuedExtensions.length) {
+            this.room.createConstructionSite()
+        }
+    }
+
+    findExtensionPos() {
+        let safetyCtr = 0
+        let currentPosition = this.room.find(FIND_MY_SPAWNS)[0].pos
+        let currentRange = 0
+        let currentPosIdx = 0
+        while(safetyCtr++ < 100) {
+            currentPosition.
+        }
     }
 }
