@@ -11,7 +11,6 @@ module.exports = class RoomManager {
         this.managers = new Map()
         if(!("managers" in Memory)){
             Memory.managers = {}
-            delete Memory.wipe
         }
         if("wipe" in Memory) {
             Memory.managers = {}

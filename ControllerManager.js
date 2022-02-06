@@ -50,7 +50,7 @@ module.exports = class ControllerManager extends Manager {
 
     rulesTemplate() {
         return {
-            priority: 4,
+            priority: 3,
             producers: [StorageManager]
         }
     }

@@ -7,7 +7,6 @@ module.exports = class ConstructionManager extends Manager {
         super(room, parent)
         this.creepOwner = new CreepOwner(this)
 
-        this.controller = room.controller
         if(this.name in Memory.managers) {
             this.load()
             return
@@ -16,6 +15,7 @@ module.exports = class ConstructionManager extends Manager {
         this.priority = 3
         this.queue = []
         this.pos = this.controller.pos
+        this.deliveries = new Map()
     }
 
     get features() {
@@ -23,7 +23,7 @@ module.exports = class ConstructionManager extends Manager {
     }
 
     get name() {
-        return this.room.name + "_CtrlM"
+        return this.room.name + "_ConstructionManager"
     }
 
     load() {
@@ -31,6 +31,7 @@ module.exports = class ConstructionManager extends Manager {
         this.creepOwner.load(managerMemory)
 
         this.priority = Memory.managers[this.name].priority
+        this.priority = Memory.managers[this.name].queue
         this.pos = new RoomPosition(Memory.managers[this.name].pos.x, Memory.managers[this.name].pos.y, this.room.name)
     }
 
@@ -39,6 +40,7 @@ module.exports = class ConstructionManager extends Manager {
             priority: this.priority,
             energyNeeded: this.energyNeeded,
             pos: this.pos,
+            queue: this.queue
         }
         this.creepOwner.save(Memory.managers[this.name])
     }
@@ -58,6 +60,10 @@ module.exports = class ConstructionManager extends Manager {
             range: 2
         }
 
+
+        for(let x = 4; x <= 46; x+=7) {
+
+        }
     }
 
     creepNeeded() {
@@ -98,23 +104,27 @@ module.exports = class ConstructionManager extends Manager {
         return 3000 - this.availableEnergy - deliveryManager.pendingEnergy(this.name)
     }
 
-    run() {
-        this.creepOwner.run()
-    }
-
     queueConstructionSite() {
         // process extensions
+        this.queueExtension()
     }
 
     queueExtension() {
         const builtExtensions = this.room.find(FIND_MY_STRUCTURES, {filter: {structureType: STRUCTURE_EXTENSION}})
         const queuedExtensions = this.room.find(FIND_MY_CONSTRUCTION_SITES, {filter: {structureType: STRUCTURE_EXTENSION}})
+        let skip = 0
         if(CONTROLLER_STRUCTURES[STRUCTURE_EXTENSION][this.room.controller.level] > builtExtensions.length + queuedExtensions.length) {
-            this.room.createConstructionSite()
+            let pos = true
+            while(pos) {
+                const pos = this.findExtensionPos(skip)
+                if(this.room.createConstructionSite(pos, STRUCTURE_EXTENSION) != OK) {
+                    skip++
+                }
+            }
         }
     }
 
-    findExtensionPos() {
+    findExtensionPos(skip = 0) {
         let spawnPosition = this.room.find(FIND_MY_SPAWNS)[0].pos
         for(let range = 1; range <= 6; range++) {
             for(let idx = 0; idx < range * 4; idx++) {
@@ -136,7 +146,21 @@ module.exports = class ConstructionManager extends Manager {
                     pos.y = range - (idx % range) * 2
                 }
             }
-            this.room.getPositionAt(spawnPosition.x + pos.x, spawnPosition.y + pos.t).lookFor()
+            const roomPos = this.room.getPositionAt(spawnPosition.x + pos.x, spawnPosition.y + pos.t)
+            if((roomPos.lookFor(LOOK_TERRAIN)[0] != 'wall') && !roomPos.lookFor(LOOK_STRUCTURES) && !roomPos.lookFor(LOOK_CONSTRUCTION_SITES)) {
+                if(skip-- > 0) {
+                    continue
+                }
+                return roomPos
+            }
         }
+        return null
     }
+
+    run() {
+        this.queue = this.queue.filter(obj => new RoomPosition(obj.pos.x, obj.pos.y, this.room.name).lookFor(LOOK_CONSTRUCTION_SITES))
+        this.creepOwner.run()
+        this.queueConstructionSite()
+    }
+
 }
