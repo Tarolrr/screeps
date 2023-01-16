@@ -4,6 +4,8 @@
 apt update
 curl -fsSL https://deb.nodesource.com/setup_10.x | sudo -E bash -
 apt install -y nodejs build-essential python2.7
+apt install dos2unix
+dos2unix /root/node_modules/.hooks/install
 npm install screeps --save
 npm install screepsmod-auth
 ```
