@@ -1,11 +1,14 @@
 # Private Server
 
+Server should have at least 2GB of RAM to successfully build isolated-vm.
+Then it could be tuned down probably.
+
 ```
 apt update
 curl -fsSL https://deb.nodesource.com/setup_10.x | sudo -E bash -
 apt install -y nodejs build-essential python2.7
 apt install dos2unix
-dos2unix /root/node_modules/.hooks/install
+find /root/node_modules -type f -print0 | xargs -0 dos2unix --
 npm install screeps --save
 npm install screepsmod-auth
 ```
