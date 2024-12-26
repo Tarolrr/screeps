@@ -1,0 +1,7 @@
+servers:
+    gcp:
+        host: <ip>
+        port: 21025
+        secure: false
+        username: tarolrr
+        password: <pass>
