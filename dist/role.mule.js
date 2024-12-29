@@ -1,4 +1,5 @@
 const DeliveryManager = require("./DeliveryManager")
+const logger = require("./logger")
 
 var roleMule = {
 
@@ -143,7 +144,7 @@ var roleMule = {
                 break collect
             }
             const src = DeliveryManager.cache[DeliveryManager.name(creep.room)].parent.managers.filter(([name, prd]) => prd.name == creep.memory.src).values().next().value
-            console.log(src.name)
+            logger.debug("Mule.collect: " + src.name)
             creep.memory.destination = src.destination()
 
             // let size = 0;

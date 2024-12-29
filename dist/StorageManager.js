@@ -5,6 +5,7 @@ const DeliveryManager = require("./DeliveryManager");
 const CreepOwner = require("./CreepOwner");
 const Manager = require("./Manager");
 const ProducerMixin = require("./Producer").ProducerMixin
+const logger = require("./logger");
 
 module.exports = class StorageManager extends Manager {
     /** @param {Room} room
@@ -66,7 +67,7 @@ module.exports = class StorageManager extends Manager {
         //TODO account for StructureContainer
 
         //TODO account for StructureStorage
-        console.log("test")
+        logger.debug("StorageManager.destination: starting")
         return {
             type: "ground",
             pos: this.pos,

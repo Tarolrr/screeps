@@ -4,6 +4,7 @@ const Consumer = require("./Consumer")
 const Manager = require("./Manager");
 const CreepOwner = require("./CreepOwner");
 const Producer = require("./Producer").Producer
+const logger = require("./logger");
 
 module.exports = class DeliveryManager extends Manager{
 
@@ -139,6 +140,7 @@ module.exports = class DeliveryManager extends Manager{
             })
 
             if(currEnergyRate < manager.energyRate) {
+                logger.debug("DeliveryManager " + this.name + ": ordering a mule for " + name)
                 return {
                     role: "mule",
                     memory: {

@@ -4,6 +4,7 @@ const Manager = require("./Manager");
 const ProducerMixin = require("./Producer").ProducerMixin
 const Producer = require("./Producer").Producer
 const QueuedCreep = require("./creepUtils").QueuedCreep
+const logger = require("./logger");
 
 module.exports = class SourceManager extends Manager {
 
@@ -134,6 +135,7 @@ module.exports = class SourceManager extends Manager {
     // will be called by RoomManager
     creepNeeded() {
         if((this.freePlaces > 0) && (this.hasWork < this.needWork)) {
+            logger.debug("SourceManager " + this.name + ": ordering a harvester")
             // request harvester of maximum practical size
             return {
                 role: "harvester",
@@ -156,12 +158,15 @@ module.exports = class SourceManager extends Manager {
     }
 
     run() {
+        logger.trace("SourceManager.run()")
         this.creepOwner.run()
 
         this.hasWork = 0
         const harvesters = this.creepOwner.creeps.concat(this.creepOwner.creepsQueued).filter(creep => creep.memory.role == "harvester")
         harvesters.forEach(creep => this.hasWork += creep.memory.efficiency)
         this.freePlaces = this.workPlaces.length - harvesters.length
+
+        logger.trace("SourceManager.run() end")
     }
 
 }

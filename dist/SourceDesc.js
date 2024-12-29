@@ -1,3 +1,4 @@
+const logger = require("./logger");
 
 /** @param {RoomPosition} pos **/
 function checkSourceAvailability(pos){
@@ -52,7 +53,7 @@ module.exports = class SourceDesc{
     }
 
     update() {
-        console.log("src update")
+        logger.debug("src update")
         const source = Game.getObjectById(this.srcId)
         this.needWork = Math.ceil(source.energyCapacity / 300 / 2);
 
@@ -61,7 +62,7 @@ module.exports = class SourceDesc{
         const spawn = source.room.find(FIND_MY_SPAWNS)[0];
         this.timeTo = PathFinder.search(spawn.pos, {pos: source.pos, range: 1}, {roomCallback: (_) => costMatrix, plainCost:2, swampCost:10}).cost/2;
 
-        console.log("time to " + this.timeTo)
+        logger.debug("time to " + this.timeTo)
         this.needCarry = this.timeTo * 2 /                 // round-trip time
             50 *                                        // one CARRY part capacity
             (source.energyCapacity / ENERGY_REGEN_TIME) * 3;// source energy per second capacity

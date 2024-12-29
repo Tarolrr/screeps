@@ -3,6 +3,7 @@ const SourceManager = require("./SourceManager")
 const SpawnManager = require("./SpawnManager")
 const StorageManager = require("./StorageManager")
 const ControllerManager = require("./ControllerManager")
+const logger = require("./logger")
 
 module.exports = class RoomManager {
     /** @param {Room} room */
@@ -55,7 +56,7 @@ module.exports = class RoomManager {
     }
 
     run() {
-
+        logger.trace("RoomManager.run()")
         this.spawnManager.run()
         this.sourceManagers.forEach(srcMng => srcMng.run())
         this.storageManager.run()
@@ -63,6 +64,7 @@ module.exports = class RoomManager {
         this.controllerManager.run()
         this.queueCreeps()
         this.save()
+        logger.trace("RoomManager.run() end")
     }
 
     load() {
@@ -82,7 +84,7 @@ module.exports = class RoomManager {
             }
             if(creepNeeded) {
                 const queuedCreep = this.spawnManager.queueCreep(creepNeeded.role, creepNeeded.memory)
-                console.log(queuedCreep.memory.src + " " + selectedManager.name)
+                logger.debug(queuedCreep.memory.src + " " + selectedManager.name)
                 selectedManager.creepOwner.addCreep(queuedCreep)
             }
         } while(creepNeeded)

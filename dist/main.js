@@ -7,6 +7,7 @@ const roleMule = require('./role.mule');
 const harvestPlanner = require('./room.harvestPlanner');
 const spawnPlanner = require('./SpawnPlanner');
 const consumptionPlanner = require('./room.consumptionPlanner');
+const logger = require('./logger');
 
 const RoomManager = require("./RoomManager")
 
@@ -16,6 +17,9 @@ module.exports.loop = function () {
     // spawnPlanner.run();
     // consumptionPlanner.run();
     try {
+        logger.load();
+        logger.debug('Starting main loop');
+
         if (Memory.creepId == undefined) {
             Memory.creepId = 0;
             Memory.managers = {}
@@ -45,10 +49,9 @@ module.exports.loop = function () {
                 roleRepairer.run(creep);
             }
         }
-        console.log("CPU " + Game.cpu.getUsed())
+        logger.debug("CPU " + Game.cpu.getUsed())
     }
     catch (e) {
-        // console.log(e)
-        console.log(e.stack)
+        logger.error(e.stack)
     }
 }

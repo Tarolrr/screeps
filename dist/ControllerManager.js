@@ -5,6 +5,7 @@ const StorageManager = require("./StorageManager")
 const DeliveryManager = require("./DeliveryManager")
 const CreepOwner = require("./CreepOwner")
 const Manager = require("./Manager");
+const logger = require("./logger");
 
 module.exports = class ControllerManager extends Manager {
     /** @param {Room} room */
@@ -66,9 +67,9 @@ module.exports = class ControllerManager extends Manager {
     }
 
     creepNeeded() {
-        console.log("test123")
+        logger.trace("ControllerManager.creepNeeded: started")
         if((this.availableEnergy / 500) > this.creepOwner.creeps.concat(this.creepOwner.creepsQueued).length) {
-            console.log("test123")
+            logger.debug("ControllerManager.creepNeeded: ordering an upgrader")
             return {
                 role: "upgrader",
                 memory: {},
@@ -104,6 +105,8 @@ module.exports = class ControllerManager extends Manager {
     }
 
     run() {
+        logger.trace("ControllerManager.run()")
         this.creepOwner.run()
+        logger.trace("ControllerManager.run() end")
     }
 }

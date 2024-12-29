@@ -1,5 +1,6 @@
 const CreepOwner = require("./CreepOwner")
 const Manager = require("./Manager");
+const Logger = require("./logger");
 
 module.exports = class ConstructionManager extends Manager {
     /** @param {Room} room */
@@ -67,9 +68,9 @@ module.exports = class ConstructionManager extends Manager {
     }
 
     creepNeeded() {
-        console.log("test123")
+        logger.debug("ConstructionManager.creepNeeded: started")
         if((this.availableEnergy / 500) > this.creepOwner.creeps.concat(this.creepOwner.creepsQueued).length) {
-            console.log("test123")
+            logger.debug("ConstructionManager.creepNeeded: ordering a builder")
             return {
                 role: "builder",
                 memory: {},

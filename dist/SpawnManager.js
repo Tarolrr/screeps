@@ -4,6 +4,7 @@ const QueuedCreep = require("./creepUtils").QueuedCreep
 const SourceManager = require("./SourceManager")
 const DeliveryManager = require("./DeliveryManager")
 const Manager = require("./Manager");
+const logger = require("./logger")
 
 module.exports = class SpawnManager extends Manager {
     /** @param {Room} room */
@@ -141,10 +142,10 @@ module.exports = class SpawnManager extends Manager {
     }
 
     run() {
-
+        logger.trace("SpawnManager.run()")
         for(const [name, mng] of this.parent.managers) {
             if(mng.features.has("CreepOwner")) {
-                console.log(mng.name)
+                logger.debug(mng.name)
                 mng.creepOwner.creepsQueued = mng.creepOwner.creepsQueued.filter(creep => {
                     for(const creep2 of this.queue) {
                         if(creep.name == creep2.name) {
@@ -168,5 +169,6 @@ module.exports = class SpawnManager extends Manager {
         //     console.log([MOVE, WORK, WORK][2] === test[2])
         //     console.log(this.spawn.spawnCreep(new Array(MOVE, WORK, WORK), "123456", {dryRun: true}))
         // }
+        logger.trace("SpawnManager.run() end")
     }
 }
