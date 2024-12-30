@@ -6,12 +6,14 @@ var roleMule = {
     /** @param {Creep} creep **/
     run: function(creep) {
         if((creep.spawning == true)){
+            logger.debug("Mule " + creep.name + " is spawning")
             return
         }
 
         if(creep.memory.destination) {
             const destination = creep.memory.destination
             if(destination.type == "wait") {
+                logger.debug("Mule " + creep.name + " goes to " + destination.pos + " and waits " + destination.time + " ticks")
                 if(creep.pos.getRangeTo(destination.pos) > destination.range) {
                     creep.moveTo(destination.pos)
                     return
@@ -25,10 +27,11 @@ var roleMule = {
                 }
             }
             else if(destination.type == "resource") {
+                logger.debug("Mule " + creep.name + " goes to pickup resource at " + destination.pos)
                 const objList = creep.room.lookForAt(LOOK_RESOURCES, destination.pos.x, destination.pos.y)
                 if(objList.length > 0) {
                     if(creep.pos.getRangeTo(objList[0]) > 1) {
-                        creep.moveTo(objList[0])
+                        creep.moveTo(objList[0], {reusePath: 10})
                     }
                     else {
                         creep.pickup(objList[0])
@@ -40,6 +43,7 @@ var roleMule = {
             }
             else if(destination.type == "structure") {
                 if(creep.memory.state == "store") {
+                    logger.debug("Mule " + creep.name + " goes to store energy at " + destination.pos)
                     const structure = Game.getObjectById(destination.id)
                     if(creep.pos.getRangeTo(structure) <= 1) {
                         creep.transfer(structure, RESOURCE_ENERGY)
@@ -53,7 +57,7 @@ var roleMule = {
             }
             else if(destination.type == "ground") {
 
-
+                logger.debug("Mule " + creep.name + " goes to collect resource at " + destination.pos)
                 if(creep.memory.state == "collect") {
 
                     const pos = new RoomPosition(destination.pos.x, destination.pos.y, creep.room.name)
@@ -144,7 +148,7 @@ var roleMule = {
                 break collect
             }
             const src = DeliveryManager.cache[DeliveryManager.name(creep.room)].parent.managers.filter(([name, prd]) => prd.name == creep.memory.src).values().next().value
-            logger.debug("Mule.collect: " + src.name)
+            logger.debug("Mule " + creep.name + " goes to collect at " + src.name)
             creep.memory.destination = src.destination()
 
             // let size = 0;

@@ -145,7 +145,7 @@ module.exports = class SpawnManager extends Manager {
         logger.trace("SpawnManager.run()")
         for(const [name, mng] of this.parent.managers) {
             if(mng.features.has("CreepOwner")) {
-                logger.debug(mng.name)
+                // logger.debug(mng.name)
                 mng.creepOwner.creepsQueued = mng.creepOwner.creepsQueued.filter(creep => {
                     for(const creep2 of this.queue) {
                         if(creep.name == creep2.name) {

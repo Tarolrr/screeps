@@ -18,7 +18,6 @@ module.exports.loop = function () {
     // consumptionPlanner.run();
     try {
         logger.load();
-        logger.debug('Starting main loop');
 
         if (Memory.creepId == undefined) {
             Memory.creepId = 0;

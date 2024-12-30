@@ -1,6 +1,6 @@
 const CreepOwner = require("./CreepOwner")
 const Manager = require("./Manager");
-const Logger = require("./logger");
+const logger = require("./logger");
 
 module.exports = class ConstructionManager extends Manager {
     /** @param {Room} room */
