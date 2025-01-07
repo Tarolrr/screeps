@@ -1,6 +1,9 @@
 require("./mapPatch")
 const roleHarvester = require('./role.harvester');
 const logger = require('./logger');
+const resourceManager = require('./resourceManager');
+const sourceResource = require('./resources.sourceResource');
+const SourceController = require('./SourceController');
 
 module.exports.loop = function () {
     // harvestPlanner.run();
@@ -39,6 +42,11 @@ module.exports.loop = function () {
         //         roleRepairer.run(creep);
         //     }
         // }
+        sourceController = new SourceController();
+        resourceManager.registerResourceType("source", sourceResource);
+        sourceController.reconcile();
+
+        resourceManager.save();
         logger.debug("CPU " + Game.cpu.getUsed())
     }
     catch (e) {

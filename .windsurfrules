@@ -1,0 +1,7 @@
+- This is a bot for programming game screeps.
+- It is based on the screeps api documented here: https://docs.screeps.com/api/.
+- The game allows to have only plain structure of files in root directory.
+- The game executes loop function exported from main.js module.
+- Current structure consists of dist directory containing last working solution and dist2 directory containing wip attempt to rearch the solution.
+- The game engine does not preserve any objects between ticks.
+- Only way to store data is to use Memory object. All the objects have to be serialized and recreated on next tick.
