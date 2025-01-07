@@ -47,7 +47,7 @@ module.exports.loop = function () {
         sourceController.reconcile();
 
         resourceManager.save();
-        logger.debug("CPU " + Game.cpu.getUsed())
+        //logger.debug("CPU " + Game.cpu.getUsed())
     }
     catch (e) {
         logger.error(e.stack)
