@@ -4,9 +4,14 @@ class CreepOrder {
         this.schema = data.schema;
         this.role = data.role;
         this.memory = data.memory || {};
-        this.status = data.status || 'pending'; // pending, spawning, complete, failed
+        this.status = data.status || 'pending'; // pending, spawning, active, expired
         this.spawnId = data.spawnId;
         this.roomName = data.roomName;
+        this.creepId = data.creepId;
+        this.jobId = data.jobId;  // ID of the job this creep is meant to do
+        this.expiryTime = data.expiryTime; // When this order should be considered expired
+        this.metadata = data.metadata || {}; // Additional metadata for specialized roles
+        this.priority = data.priority || 0;
     }
 
     calculateBodyParts(maxEnergy) {
@@ -48,6 +53,29 @@ class CreepOrder {
         return parts;
     }
 
+    get creep() {
+        return this.creepId ? Game.getObjectById(this.creepId) : null;
+    }
+
+    isValid() {
+        // Check if the order is still valid (creep exists and hasn't expired)
+        if (this.status === 'expired') return false;
+        if (this.expiryTime && Game.time > this.expiryTime) {
+            this.status = 'expired';
+            return false;
+        }
+        
+        if (this.status === 'active') {
+            const creep = this.creep;
+            if (!creep || creep.ticksToLive <= 0) {
+                this.status = 'expired';
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
     toJSON() {
         return {
             id: this.id,
@@ -56,7 +84,12 @@ class CreepOrder {
             memory: this.memory,
             status: this.status,
             spawnId: this.spawnId,
-            roomName: this.roomName
+            roomName: this.roomName,
+            creepId: this.creepId,
+            jobId: this.jobId,
+            expiryTime: this.expiryTime,
+            metadata: this.metadata,
+            priority: this.priority
         };
     }
 

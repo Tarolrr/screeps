@@ -1,55 +1,47 @@
 require("./mapPatch")
-const roleHarvester = require('./role.harvester');
+const roles = require('./roles');
 const logger = require('./logger');
 const resourceManager = require('./resourceManager');
 const sourceResource = require('./resources.sourceResource');
-const SourceController = require('./SourceController');
+const sourceController = require('./SourceController');
+const spawnController = require('./SpawnController');
+const spawnProcess = require('./resources.spawnProcess');
+const creepOrder = require('./resources.creepOrder');
+const roomController = require('./RoomController');
+
+let initialized = false;
 
 module.exports.loop = function () {
-    // harvestPlanner.run();
-    // // CreepPlanner.run();
-    // spawnPlanner.run();
-    // consumptionPlanner.run();
     try {
         logger.load();
 
-        // if (Memory.creepId == undefined) {
-        //     Memory.creepId = 0;
-        //     Memory.managers = {}
-        // }
-        // for (const roomName in Game.rooms) {
-        //     const room = Game.rooms[roomName]
-        //     const roomManager = new RoomManager(room)
+        // Initialization phase - runs only on the first tick
+        if (!initialized) {
+            logger.debug("Initializing game state...");
+            resourceManager.registerResourceType("source", sourceResource);
+            resourceManager.registerResourceType("spawnProcess", spawnProcess);
+            resourceManager.registerResourceType("creepOrder", creepOrder);
+            resourceManager.load();
 
-        //     roomManager.run()
-        // }
+            initialized = true;
+            logger.debug("Initialization complete");
+        }
 
-        // for (const creepName in Game.creeps) {
-        //     const creep = Game.creeps[creepName];
-        //     if (creep.memory.role == 'harvester') {
-        //         roleHarvester.run(creep);
-        //     }
-        //     if (creep.memory.role == 'upgrader') {
-        //         roleUpgrader.run(creep);
-        //     }
-        //     if (creep.memory.role == 'mule') {
-        //         roleMule.run(creep);
-        //     }
-        //     if (creep.memory.role == 'builder') {
-        //         roleBuilder.run(creep);
-        //     }
-        //     if (creep.memory.role == 'repairer') {
-        //         roleRepairer.run(creep);
-        //     }
-        // }
-        sourceController = new SourceController();
-        resourceManager.registerResourceType("source", sourceResource);
-        sourceController.reconcile();
+        
+        for (const name in Game.creeps) {
+            const creep = Game.creeps[name];
+            roles.run(creep);
+        }
 
+        // Regular game loop
+        sourceController.reconcile()
+        spawnController.reconcile();
+        roomController.reconcile();
+        // Save state
         resourceManager.save();
-        //logger.debug("CPU " + Game.cpu.getUsed())
-    }
-    catch (e) {
-        logger.error(e.stack)
+        
+    } catch (error) {
+        logger.error("Error in main loop: " + error.stack);
+        initialized = false;  // Force re-initialization on error
     }
 }

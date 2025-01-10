@@ -1,5 +1,6 @@
 const resourceManager = require("./resourceManager")
 const logger = require('./logger');
+const CreepOrder = require("./resources.creepOrder");
 
 class SourceController {
 
@@ -52,7 +53,6 @@ class SourceController {
             // Calculate desired number of harvesters
             const desiredHarvesters = sourceResource.workPlaces.length;
             const currentOrders = harvesterOrders.length;
-
             // Create new harvester orders if needed
             if (currentOrders < desiredHarvesters) {
                 const newOrderCount = desiredHarvesters - currentOrders;
@@ -61,6 +61,7 @@ class SourceController {
                         schema: CreepOrder.SCHEMAS.HARVESTER,
                         role: "harvester",
                         roomName: source.room.name,
+                        priority: 100,
                         memory: {
                             role: "harvester",
                             sourceId: sourceResource.sourceId,
@@ -74,4 +75,5 @@ class SourceController {
     }
 }           
 
-module.exports = SourceController
+const instance = new SourceController();
+module.exports = instance;

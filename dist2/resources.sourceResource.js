@@ -2,6 +2,7 @@ class SourceResource {
     constructor(data) {
         this.id = data.id;
         this.sourceId = data.sourceId;
+        this.workPlaces = data.workPlaces || [];
         this._source = null;
     }
 

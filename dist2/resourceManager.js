@@ -5,7 +5,7 @@ class ResourceManager {
         this.resources = {};
         this.resourceTypes = new Map();
         this.lastId = 0;
-        this.load();
+        this.disabled = false;
     }
 
     registerResourceType(type, constructor) {
@@ -23,7 +23,6 @@ class ResourceManager {
     load() {
         if (Memory.resourceManager) {
             const rawResources = Memory.resourceManager.resources || {};
-            
             this.resources = {};
             for (const [type, resources] of Object.entries(rawResources)) {
                 if (!this.resources[type]) {
@@ -43,7 +42,21 @@ class ResourceManager {
         if (!Memory.resourceManager) {
             Memory.resourceManager = {};
         }
-        Memory.resourceManager.resources = this.resources;
+        let memory_disabled = false;
+        if (Memory.resourceManager && Memory.resourceManager.disabled !== undefined) {
+            memory_disabled = Boolean(Memory.resourceManager.disabled === true || Memory.resourceManager.disabled === 'true');
+        }
+        if (!memory_disabled) {
+            if (this.disabled) {
+                this.disabled = false;
+                this.load();
+                logger.debug("Re-enabled resource manager, loading resources from memory");
+            }
+            Memory.resourceManager.resources = this.resources;
+        }
+        else {
+            this.disabled = true;
+        }
     }
 
     generateResourceId(type) {
@@ -77,9 +90,16 @@ class ResourceManager {
     }
 
     getResourcesOfType(type) {
-        return this.resources[type] ? Object.values(this.resources[type]) : [];
+        return Object.values(this.resources[type] || {});
+    }
+
+    deleteResource(type, id) {
+        if (this.resources[type] && this.resources[type][id]) {
+            delete this.resources[type][id];
+            return true;
+        }
+        return false;
     }
 }
 
-const instance = new ResourceManager();
-module.exports = instance;
+module.exports = new ResourceManager();
