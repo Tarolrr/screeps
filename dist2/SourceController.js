@@ -28,23 +28,23 @@ class SourceController {
 
     reconcile() {
         // Initialize sources if none exist
-        if (resourceManager.getResourcesOfType("source").length === 0) {
-            const room = Object.values(Game.rooms)[0];
-            let sources = room.find(FIND_SOURCES);
+        const room = Object.values(Game.rooms)[0];
+        let sources = room.find(FIND_SOURCES);
             
-            sources.forEach(source => {
-                resourceManager.applyResource("source", {
-                    sourceId: source.id,
-                    workPlaces: this.calculateWorkPlaces(source)
-                });
+        sources.forEach(source => {
+            resourceManager.applyResource("source", {
+                sourceId: source.id,
+                roomName: source.room.name,
+                workPlaces: this.calculateWorkPlaces(source),
+                metadata: {
+                    annotation: `source_${source.id}`
+                }
             });
-        }
+        });
 
         const sourceResources = resourceManager.getResourcesOfType('source');
         
         for (const sourceResource of sourceResources) {
-            if (!sourceResource.source) continue;
-
             for (let i = 0; i < sourceResource.workPlaces.length; i++) {
                 const priority = PriorityCalculator.calculatePriorityFromId(sourceResource.sourceId, i * 20);
                 

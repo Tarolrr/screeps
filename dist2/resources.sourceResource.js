@@ -4,6 +4,7 @@ class SourceResource extends Resource {
     constructor(data) {
         super(data);
         this.sourceId = data.sourceId;
+        this.roomName = data.roomName;
         this.workPlaces = data.workPlaces || [];
         this._source = null;
     }
@@ -27,6 +28,7 @@ class SourceResource extends Resource {
         return {
             id: this.id,
             sourceId: this.sourceId,
+            roomName: this.roomName,
             workPlaces: this.workPlaces,
             metadata: this.metadata
         };

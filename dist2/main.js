@@ -8,6 +8,8 @@ const spawnController = require('./SpawnController');
 const spawnProcess = require('./resources.spawnProcess');
 const creepOrder = require('./resources.creepOrder');
 const roomController = require('./RoomController');
+const buildController = require('./BuildController');
+const ConstructionOrder = require('./resources.constructionOrder');
 /** @type {import('js-yaml')} */
 var yaml = require('js-yaml');
 // test_yaml = `
@@ -23,6 +25,7 @@ logger.debug("Initializing game state...");
 resourceManager.registerResourceType("source", sourceResource);
 resourceManager.registerResourceType("spawnProcess", spawnProcess);
 resourceManager.registerResourceType("creepOrder", creepOrder);
+resourceManager.registerResourceType("constructionOrder", ConstructionOrder);
 resourceManager.load();
 
 logger.debug("Initialization complete");
@@ -40,6 +43,8 @@ module.exports.loop = function () {
         sourceController.reconcile()
         spawnController.reconcile();
         roomController.reconcile();
+        buildController.reconcile();
+
         // Save state
         resourceManager.save();
         

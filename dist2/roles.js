@@ -1,18 +1,14 @@
 const roleHarvester = require('./role.harvester');
 const roleMule = require('./role.mule');
 const roleUpgrader = require('./role.upgrader');
+const roleBuilder = require('./role.builder');
 const logger = require('./logger');
-// Import other roles here as they are added
-// const roleBuilder = require('./role.builder');
-// const roleUpgrader = require('./role.upgrader');
 
 const roles = {
     harvester: roleHarvester,
     mule: roleMule,
     upgrader: roleUpgrader,
-    // Add other roles here as they are created
-    // builder: roleBuilder,
-    // upgrader: roleUpgrader,
+    builder: roleBuilder,
 };
 
 module.exports = {

@@ -115,7 +115,7 @@ CreepOrder.SCHEMAS = {
         { [WORK]: 1 } // ratio parts ( 1 WORK )
     ),
     BUILDER: CreepOrder.createSchema(
-        [MOVE, CARRY],
+        [MOVE, CARRY, WORK],
         { [WORK]: 1, [CARRY]: 1, [MOVE]: 1 }
     ),
     MULE: CreepOrder.createSchema(
