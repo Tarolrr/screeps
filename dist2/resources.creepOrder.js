@@ -1,17 +1,26 @@
-class CreepOrder {
+const Resource = require('resources.Resource');
+
+class CreepOrder extends Resource {
     constructor(data) {
-        this.id = data.id;
+        super(data);
         this.schema = data.schema;
         this.role = data.role;
         this.memory = data.memory || {};
         this.status = data.status || 'pending'; // pending, spawning, active, expired
-        this.spawnId = data.spawnId;
         this.roomName = data.roomName;
         this.creepId = data.creepId;
-        this.jobId = data.jobId;  // ID of the job this creep is meant to do
-        this.expiryTime = data.expiryTime; // When this order should be considered expired
-        this.metadata = data.metadata || {}; // Additional metadata for specialized roles
+        // this.jobId = data.jobId;  // ID of the job this creep is meant to do
+        // this.expiryTime = data.expiryTime; // When this order should be considered expired
         this.priority = data.priority || 0;
+    }
+
+    generateSignature(data) {
+        // Creep orders are uniquely identified by their role, jobId, and roomName
+        return JSON.stringify({
+            role: data.role,
+            jobId: data.jobId,
+            roomName: data.roomName
+        });
     }
 
     calculateBodyParts(maxEnergy) {
@@ -34,7 +43,7 @@ class CreepOrder {
                 .reduce((sum, [part, count]) => sum + (BODYPART_COST[part] * count), 0);
             
             if (remainingEnergy < ratioSetCost) {
-                return null;
+                return parts;
             }
 
             const sets = Math.floor(remainingEnergy / ratioSetCost);
@@ -60,10 +69,10 @@ class CreepOrder {
     isValid() {
         // Check if the order is still valid (creep exists and hasn't expired)
         if (this.status === 'expired') return false;
-        if (this.expiryTime && Game.time > this.expiryTime) {
-            this.status = 'expired';
-            return false;
-        }
+        // if (this.expiryTime && Game.time > this.expiryTime) {
+        //     this.status = 'expired';
+        //     return false;
+        // }
         
         if (this.status === 'active') {
             const creep = this.creep;
@@ -78,17 +87,15 @@ class CreepOrder {
 
     toJSON() {
         return {
-            id: this.id,
+            ...super.toJSON(),
             schema: this.schema,
             role: this.role,
             memory: this.memory,
             status: this.status,
-            spawnId: this.spawnId,
             roomName: this.roomName,
             creepId: this.creepId,
-            jobId: this.jobId,
-            expiryTime: this.expiryTime,
-            metadata: this.metadata,
+            // jobId: this.jobId,
+            // expiryTime: this.expiryTime,
             priority: this.priority
         };
     }
@@ -103,17 +110,21 @@ class CreepOrder {
 
 // Example schemas
 CreepOrder.SCHEMAS = {
-    // HARVESTER: CreepOrder.createSchema(
-    //     [MOVE, CARRY], // constant parts
-    //     { [WORK]: 2, [MOVE]: 1 } // ratio parts (2 WORK : 1 MOVE)
-    // ),
     HARVESTER: CreepOrder.createSchema(
-        [MOVE, CARRY], // constant parts
+        [MOVE, CARRY, WORK], // constant parts
         { [WORK]: 1 } // ratio parts ( 1 WORK )
     ),
     BUILDER: CreepOrder.createSchema(
         [MOVE, CARRY],
         { [WORK]: 1, [CARRY]: 1, [MOVE]: 1 }
+    ),
+    MULE: CreepOrder.createSchema(
+        [CARRY, CARRY, MOVE],
+        { [CARRY]: 2, [MOVE]: 1 }
+    ),
+    UPGRADER: CreepOrder.createSchema(
+        [MOVE, CARRY, WORK],
+        { [WORK]: 1 }
     ),
     // Add more schemas as needed
 };

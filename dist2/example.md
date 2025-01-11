@@ -103,7 +103,7 @@ sequenceDiagram
 1. **SourceController**:
    - Creates an `OrderCreep` resource:
      ```javascript
-     const orderId = resourceManager.createResource('OrderCreep', {
+     const orderId = resourceManager.applyResource('OrderCreep', {
          role: 'harvester',
          priority: 'high',
          specifications: null, // No parts specified at this stage
@@ -115,7 +115,7 @@ sequenceDiagram
    - Watches for `OrderCreep` resources.
    - Allocates the order to a spawn and creates an `AllocationResult` resource:
      ```javascript
-     resourceManager.createResource('AllocationResult', {
+     resourceManager.applyResource('AllocationResult', {
          spawn: 'Spawn1',
          orderId,
          state: 'allocated'

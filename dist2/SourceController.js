@@ -1,6 +1,7 @@
 const resourceManager = require("./resourceManager")
 const logger = require('./logger');
 const CreepOrder = require("./resources.creepOrder");
+const PriorityCalculator = require('./utils.priority');
 
 class SourceController {
 
@@ -32,46 +33,38 @@ class SourceController {
             let sources = room.find(FIND_SOURCES);
             
             sources.forEach(source => {
-                resourceManager.createResource("source", {
+                resourceManager.applyResource("source", {
                     sourceId: source.id,
                     workPlaces: this.calculateWorkPlaces(source)
                 });
             });
         }
 
-        // Check each source
-        resourceManager.getResourcesOfType("source").forEach(sourceResource => {
-            const source = sourceResource.source; // This gets the actual game object
-            if (!source) return; // Skip if source no longer exists
-            
-            // Get current harvester orders for this source
-            const harvesterOrders = resourceManager.getResourcesOfType("creepOrder")
-                .filter(order => order.memory.role === "harvester" && 
-                               order.memory.sourceId === sourceResource.sourceId &&
-                               order.status !== "complete");
+        const sourceResources = resourceManager.getResourcesOfType('source');
+        
+        for (const sourceResource of sourceResources) {
+            if (!sourceResource.source) continue;
 
-            // Calculate desired number of harvesters
-            const desiredHarvesters = sourceResource.workPlaces.length;
-            const currentOrders = harvesterOrders.length;
-            // Create new harvester orders if needed
-            if (currentOrders < desiredHarvesters) {
-                const newOrderCount = desiredHarvesters - currentOrders;
-                for (let i = 0; i < newOrderCount; i++) {
-                    resourceManager.createResource("creepOrder", {
-                        schema: CreepOrder.SCHEMAS.HARVESTER,
-                        role: "harvester",
-                        roomName: source.room.name,
-                        priority: 100,
-                        memory: {
-                            role: "harvester",
-                            sourceId: sourceResource.sourceId,
-                            workPlace: sourceResource.workPlaces[i]
-                        },
-                        status: "pending"
-                    });
-                }
+            for (let i = 0; i < sourceResource.workPlaces.length; i++) {
+                const priority = PriorityCalculator.calculatePriorityFromId(sourceResource.sourceId, i * 20);
+                
+                resourceManager.applyResource('creepOrder', {
+                    role: 'harvester',
+                    priority: priority,
+                    schema: CreepOrder.SCHEMAS.HARVESTER,
+                    roomName: sourceResource.source.room.name,
+                    metadata: {
+                        sourceId: sourceResource.sourceId,
+                        annotation: `harvester_${sourceResource.sourceId}_${i}`
+                    },
+                    memory: {
+                        role: 'harvester',
+                        sourceId: sourceResource.sourceId,
+                        workPlace: sourceResource.workPlaces[i]
+                    }
+                });
             }
-        });
+        }
     }
 }           
 

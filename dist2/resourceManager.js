@@ -15,9 +15,9 @@ class ResourceManager {
     createResourceInstance(type, id, data) {
         const ResourceConstructor = this.resourceTypes.get(type);
         if (ResourceConstructor) {
-            return new ResourceConstructor({ id, ...data });
+            return new ResourceConstructor({ id, type, ...data });
         }
-        return { id, ...data };
+        return { id, type, ...data };
     }
 
     load() {
@@ -63,15 +63,57 @@ class ResourceManager {
         return `${type}_${Game.time}_${++this.lastId}`;
     }
 
-    createResource(type, spec) {
+    findMatchingResource(type, spec) {
+        const tempResource = this.createResourceInstance(type, 'temp', spec);
+        if (this.resources[type]) {
+            for (const resource of Object.values(this.resources[type])) {
+                if (resource.matches(tempResource)) {
+                    return resource;
+                }
+            }
+        }
+        return null;
+    }
+
+    applyResource(type, spec) {
+        // Check for existing resource with same annotation
+        const existingResource = this.findMatchingResource(type, spec);
+        
+        if (existingResource) {
+            // If found, update with version bump
+            const newSpec = {
+                ...spec,
+                // version: (existingResource.metadata.version || 0) + 1
+            };
+            this.updateResource(type, existingResource.id, newSpec);
+            return existingResource.id;
+        }
+
+        // Create new resource if none found
         const id = this.generateResourceId(type);
         if (!this.resources[type]) {
             this.resources[type] = {};
         }
         
         this.resources[type][id] = this.createResourceInstance(type, id, spec);
-        logger.debug(`Created ${type} with id ${id} and spec ${JSON.stringify(spec)}`);
+        logger.debug(`Created new ${type} with id ${id}`);
         return id;
+    }
+
+    updateResource(type, id, changes) {
+        if (this.resources[type] && this.resources[type][id]) {
+            const oldResource = this.resources[type][id];
+            const newResource = this.createResourceInstance(type, id, changes);
+            
+            // Compare JSON representations to check for actual changes
+            const oldJson = JSON.stringify(oldResource);
+            const newJson = JSON.stringify(newResource);
+            
+            if (oldJson !== newJson) {
+                this.resources[type][id] = newResource;
+                logger.debug(`Updated ${type} with id ${id}`);
+            }
+        }
     }
 
     getResourceByTypeAndId(type, id) {
@@ -81,12 +123,6 @@ class ResourceManager {
     getResourceByField(type, field, value) {
         if (!this.resources[type]) return [];
         return Object.values(this.resources[type]).filter(resource => resource[field] === value);
-    }
-
-    updateResource(type, id, changes) {
-        if (this.resources[type] && this.resources[type][id]) {
-            this.resources[type][id] = this.createResourceInstance(type, id, changes);
-        }
     }
 
     getResourcesOfType(type) {

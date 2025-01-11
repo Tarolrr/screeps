@@ -8,25 +8,28 @@ const spawnController = require('./SpawnController');
 const spawnProcess = require('./resources.spawnProcess');
 const creepOrder = require('./resources.creepOrder');
 const roomController = require('./RoomController');
+/** @type {import('js-yaml')} */
+var yaml = require('js-yaml');
+// test_yaml = `
+// spawnProcess:
+//     - type: source
+//       id: 1
+//       amount: 500
+// `
+// console.log(JSON.stringify(yaml.load(test_yaml), null, 2));
 
-let initialized = false;
+logger.debug("Initializing game state...");
+
+resourceManager.registerResourceType("source", sourceResource);
+resourceManager.registerResourceType("spawnProcess", spawnProcess);
+resourceManager.registerResourceType("creepOrder", creepOrder);
+resourceManager.load();
+
+logger.debug("Initialization complete");
 
 module.exports.loop = function () {
     try {
         logger.load();
-
-        // Initialization phase - runs only on the first tick
-        if (!initialized) {
-            logger.debug("Initializing game state...");
-            resourceManager.registerResourceType("source", sourceResource);
-            resourceManager.registerResourceType("spawnProcess", spawnProcess);
-            resourceManager.registerResourceType("creepOrder", creepOrder);
-            resourceManager.load();
-
-            initialized = true;
-            logger.debug("Initialization complete");
-        }
-
         
         for (const name in Game.creeps) {
             const creep = Game.creeps[name];

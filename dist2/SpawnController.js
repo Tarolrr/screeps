@@ -64,7 +64,7 @@ class SpawnController {
             orders.sort((a, b) => b.priority - a.priority);
             for (const order of orders) {
                 const bodyParts = order.calculateBodyParts(room.energyAvailable);
-                if (!bodyParts) continue;
+                if (!bodyParts) break;
 
                 const result = spawn.spawnCreep(bodyParts, order.id, {
                     memory: order.memory
@@ -72,7 +72,7 @@ class SpawnController {
 
                 if (result === OK) {
                     // Create spawn process to track this spawn
-                    resourceManager.createResource("spawnProcess", {
+                    resourceManager.applyResource("spawnProcess", {
                         orderId: order.id,
                         spawnId: spawn.id
                     });

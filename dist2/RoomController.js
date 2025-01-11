@@ -1,5 +1,7 @@
 const resourceManager = require('./resourceManager');
 const logger = require('./logger');
+const CreepOrder = require('./resources.creepOrder');
+const PriorityCalculator = require('./utils.priority');
 
 class RoomController {
     constructor() {
@@ -7,45 +9,25 @@ class RoomController {
     }
 
     reconcile() {
-        for (const roomName in Game.rooms) {
-            const room = Game.rooms[roomName];
-
+        for (const room of Object.values(Game.rooms)) {
             const sources = room.find(FIND_SOURCES);
-            const spawn = room.find(FIND_MY_SPAWNS)[0];
+            const spawns = room.find(FIND_MY_SPAWNS);
             const controller = room.controller;
-            if (!spawn) return;
 
-            // Get all active mule orders for this room
-            const muleOrders = resourceManager.getResourceByField('creepOrder', 'role', 'mule')
-                .filter(order => 
-                    order.roomName === room.name &&
-                    order.status !== 'expired'
-                );
+            if (!spawns.length) continue;
 
-            // Check each source
             for (const source of sources) {
-                // Check if we have a mule for this source
-                const hasMule = muleOrders.some(order => 
-                    order.metadata && order.metadata.sourceId === source.id
-                );
-
-                if (!hasMule) {
-                    logger.info(`Creating mule order for source ${source.id} in room ${room.name}`);
-                    
-                    resourceManager.createResource('creepOrder', {
+                const spawn = spawns[0];  // Using first spawn for now
+                if (spawn && source) {
+                    const priority = PriorityCalculator.calculatePriorityFromId(source.id, 10);
+                    resourceManager.applyResource('creepOrder', {
                         role: 'mule',
-                        priority: 90,
-                        schema: {
-                            constant: [MOVE, CARRY, CARRY],
-                            ratio: {
-                                [MOVE]: 1,
-                                [CARRY]: 2
-                            }
-                        },
-                        spawnId: spawn.id,
+                        priority: priority,
+                        schema: CreepOrder.SCHEMAS.MULE,
                         roomName: room.name,
                         metadata: {
-                            sourceId: source.id
+                            sourceId: source.id,
+                            annotation: `mule_spawn_${source.id}`
                         },
                         memory: {
                             role: 'mule',
@@ -63,21 +45,15 @@ class RoomController {
                                 id: spawn.id
                             }]
                         }
-                    });                    
-                    resourceManager.createResource('creepOrder', {
+                    });    
+                    resourceManager.applyResource('creepOrder', {
                         role: 'mule',
-                        priority: 50,
-                        schema: {
-                            constant: [MOVE, CARRY, CARRY],
-                            ratio: {
-                                [MOVE]: 1,
-                                [CARRY]: 2
-                            }
-                        },
-                        spawnId: spawn.id,
+                        priority: 51,
+                        schema: CreepOrder.SCHEMAS.MULE,
                         roomName: room.name,
                         metadata: {
-                            sourceId: source.id
+                            sourceId: source.id,
+                            annotation: `mule_controller_${source.id}`
                         },
                         memory: {
                             role: 'mule',
@@ -101,19 +77,14 @@ class RoomController {
                             }]
                         }
                     });                    
-                    resourceManager.createResource('creepOrder', {
+                    resourceManager.applyResource('creepOrder', {
                         role: 'upgrader',
                         priority: 50,
-                        schema: {
-                            constant: [MOVE, CARRY],
-                            ratio: {
-                                [WORK]: 1,
-                            }
-                        },
-                        spawnId: spawn.id,
+                        schema: CreepOrder.SCHEMAS.UPGRADER,
                         roomName: room.name,
                         metadata: {
-                            sourceId: source.id
+                            sourceId: source.id,
+                            annotation: `upgrader_${source.id}`
                         },
                         memory: {
                             role: 'upgrader',

@@ -1,13 +1,22 @@
+const Resource = require('./resources.Resource');
 const resourceManager = require('./resourceManager');
 
-class SpawnProcess {
+class SpawnProcess extends Resource {
     constructor(data) {
-        this.id = data.id;
+        super(data);
         this.orderId = data.orderId;  // ID of the CreepOrder this process is for
         this.spawnId = data.spawnId;  // ID of the spawn being used
         this.startTime = data.startTime || Game.time;
         this.status = data.status || 'spawning';  // spawning, completed, failed
         this.creepId = data.creepId;  // ID of the resulting creep (if successful)
+    }
+
+    generateSignature(data) {
+        // Spawn processes are uniquely identified by their orderId and spawnId
+        return JSON.stringify({
+            orderId: data.orderId,
+            spawnId: data.spawnId
+        });
     }
 
     get spawn() {
@@ -39,7 +48,6 @@ class SpawnProcess {
 
     toJSON() {
         return {
-            id: this.id,
             orderId: this.orderId,
             spawnId: this.spawnId,
             startTime: this.startTime,
