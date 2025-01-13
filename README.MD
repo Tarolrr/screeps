@@ -112,3 +112,12 @@ Edit file `.\node_modules\screeps-api\bin\screeps-api.js` (replace lines 162-175
 Now you can use the following command to upload your code to the server:
 
 `screeps-api upload --server <SOME_SERVER_NAME> .\dist\`
+
+
+# In game
+
+## One-liner to clean construction sites
+
+```js
+Object.values(Game.rooms)[0].find(FIND_MY_CONSTRUCTION_SITES).forEach(site => site.remove())
+```

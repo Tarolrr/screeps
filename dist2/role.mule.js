@@ -22,11 +22,11 @@ const roleMule = {
 
         // Switch tasks if needed
         if (creep.memory.state === STATE.COLLECTING && creep.store.getFreeCapacity() === 0) {
-            logger.debug(`Mule ${creep.name} inventory full, switching to DELIVERING`);
+            // logger.debug(`Mule ${creep.name} inventory full, switching to DELIVERING`);
             creep.memory.state = STATE.DELIVERING;
             creep.memory.currentTaskIndex = 0;
         } else if (creep.memory.state === STATE.DELIVERING && creep.store.getUsedCapacity() === 0) {
-            logger.debug(`Mule ${creep.name} inventory empty, switching to COLLECTING`);
+            // logger.debug(`Mule ${creep.name} inventory empty, switching to COLLECTING`);
             creep.memory.state = STATE.COLLECTING;
             creep.memory.currentTaskIndex = 0;
         }
@@ -138,6 +138,8 @@ const roleMule = {
 
         if (task.entityType === 'ground') {
             targets = pos.findInRange(FIND_DROPPED_RESOURCES, task.range);
+            targets.sort((a, b) => creep.pos.getRangeTo(a) - creep.pos.getRangeTo(b));
+
             // logger.debug(`Mule ${creep.name} found ${targets.length} dropped resources in range ${task.range}`);
         } else if (task.entityType === 'structure') {
             targets = pos.findInRange(FIND_STRUCTURES, task.range, {
@@ -146,6 +148,8 @@ const roleMule = {
                            structure.store.getUsedCapacity(task.resourceType || RESOURCE_ENERGY) > 0;
                 }
             });
+            // Sort by distance to creep
+            targets.sort((a, b) => creep.pos.getRangeTo(a) - creep.pos.getRangeTo(b));
             logger.debug(`Mule ${creep.name} found ${targets.length} structures with resources`);
         }
 
@@ -209,7 +213,9 @@ const roleMule = {
                            structure.store.getFreeCapacity(task.resourceType || RESOURCE_ENERGY) > 0;
                 }
             });
-            logger.debug(`Mule ${creep.name} found ${targets.length} structures for delivery`);
+            // Sort by distance to creep
+            targets.sort((a, b) => creep.pos.getRangeTo(a) - creep.pos.getRangeTo(b));
+            // logger.debug(`Mule ${creep.name} found ${targets.length} structures for delivery`);
         } else if (task.entityType === 'creep') {
             targets = pos.findInRange(FIND_MY_CREEPS, task.range, {
                 filter: (creep) => {

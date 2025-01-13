@@ -22,10 +22,10 @@ const roleUpgrader = {
 
         // Switch states based on energy
         if (creep.memory.state === STATE.COLLECTING && creep.store.getFreeCapacity() === 0) {
-            logger.debug(`Upgrader ${creep.name} inventory full, switching to UPGRADING`);
+            // logger.debug(`Upgrader ${creep.name} inventory full, switching to UPGRADING`);
             creep.memory.state = STATE.UPGRADING;
         } else if (creep.memory.state === STATE.UPGRADING && creep.store.getUsedCapacity(RESOURCE_ENERGY) === 0) {
-            logger.debug(`Upgrader ${creep.name} out of energy, switching to COLLECTING`);
+            // logger.debug(`Upgrader ${creep.name} out of energy, switching to COLLECTING`);
             creep.memory.state = STATE.COLLECTING;
         }
 
@@ -58,7 +58,7 @@ const roleUpgrader = {
         });
 
         if (droppedEnergy.length > 0) {
-            logger.debug(`Upgrader ${creep.name} found ${droppedEnergy.length} dropped energy sources`);
+            // logger.debug(`Upgrader ${creep.name} found ${droppedEnergy.length} dropped energy sources`);
             const target = droppedEnergy[0];
             if (creep.pickup(target) === ERR_NOT_IN_RANGE) {
                 creep.moveTo(target);

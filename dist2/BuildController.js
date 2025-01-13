@@ -24,7 +24,8 @@ class BuildController {
         });
     }
 
-    queueStructurePattern(roomName, structureType, pattern, priority = 0, annotation) {
+    queueStructurePattern(roomName, structureType, pattern, priority = 0, annotation, count=0) {
+        // logger.debug(`Queuing construction order for ${structureType} in room ${roomName}, priority: ${priority}, count: ${count}, annotation: ${annotation}`);
         return resourceManager.applyResource('constructionOrder', {
             structureType,
             pattern,
@@ -32,7 +33,8 @@ class BuildController {
             priority,
             metadata: {
                 annotation
-            }
+            },
+            count: count
         });
     }
 
@@ -46,14 +48,16 @@ class BuildController {
             room.name,
             STRUCTURE_EXTENSION,
             {
-                type: 'centeredCheckboard',
+                type: 'checkboard',
                 params: {
-                    centerPos: spawn.pos,
-                    maxCount: maxExtensions
+                    startPos: spawn.pos,
+                    size: 7,
+                    centered: true
                 }
             },
             90, // high priority
-            `extensions_${room.name}`
+            `extensions_${room.name}`,
+            maxExtensions
         );
 
         // Queue roads from sources to spawn
@@ -65,8 +69,10 @@ class BuildController {
                 {
                     type: 'path',
                     params: {
+                        roomName: room.name,
                         fromPos: source.pos,
                         toPos: spawn.pos,
+                        width: 2,
                         opts: {
                             ignoreCreeps: true,
                             swampCost: 1,
@@ -87,8 +93,10 @@ class BuildController {
             {
                 type: 'path',
                 params: {
+                    roomName: room.name,
                     fromPos: spawn.pos,
                     toPos: room.controller.pos,
+                    width: 2,
                     opts: {
                         ignoreCreeps: true,
                         swampCost: 1,
@@ -113,33 +121,43 @@ class BuildController {
 
             // Handle construction orders
             const constructionOrders = resourceManager.getResourcesOfType('constructionOrder')
-                .filter(order => order.roomName === room.name)
-                .sort((a, b) => b.priority - a.priority);
+            .filter(order => order.roomName === room.name)
+            .sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
-            // Check for missing/destroyed structures
+            const MAX_CONSTRUCTION_SITES = 5; // We can adjust this value
+            let currentSites = room.find(FIND_MY_CONSTRUCTION_SITES).length;
+            // logger.debug('Current construction sites: ' + currentSites + ', max: ' + MAX_CONSTRUCTION_SITES);
             for (const order of constructionOrders) {
-                order.checkStructures(room);
-                
+                if (currentSites >= MAX_CONSTRUCTION_SITES) {
+                    break;
+                }
+
+                let newPositions = order.generateConstructionSitePositions(MAX_CONSTRUCTION_SITES - currentSites);
+                // logger.debug(`Processing construction order: ${order.id}, positions: ${JSON.stringify(newPositions)}`);
                 // Try to create construction sites for missing structures
-                // Start from highest priority positions
-                for (let i = 0; i < order.positions.length; i++) {
-                    if (order.needsConstruction(i)) {
-                        const pos = order.positions[i];
-                        const result = room.createConstructionSite(pos.x, pos.y, order.structureType);
-                        
-                        if (result === OK) {
-                            const roomPos = new RoomPosition(pos.x, pos.y, room.name);
-                            const sites = roomPos.lookFor(LOOK_CONSTRUCTION_SITES);
-                            const site = sites.find(s => s.structureType === order.structureType);
-                            if (site) {
-                                order.constructionSites[i] = site.id;
-                                resourceManager.updateResource('constructionOrder', order.id, order);
-                                break; // Only create one site at a time to avoid overloading
-                            }
-                        }
+                for (let i = 0; i < newPositions.length; i++) {
+                    const pos = newPositions[i];
+                    const result = room.createConstructionSite(pos.x, pos.y, order.structureType);
+                    
+                    if (result === OK) {                            
+                        currentSites++;
+                    }
+                    if (currentSites >= MAX_CONSTRUCTION_SITES) {
+                        break;
                     }
                 }
+
+                // If we've reached the maximum, stop processing orders
+                if (currentSites >= MAX_CONSTRUCTION_SITES) {
+                    break;
+                }
             }
+
+
+            // Resources part
+
+            // Ensure basic structures are queued
+            this.ensureBasicStructures(room);
 
             // Handle builder creep order
             const collectTemplates = [{
@@ -166,7 +184,6 @@ class BuildController {
                     schema: CreepOrder.SCHEMAS.MULE,
                     roomName: room.name,
                     metadata: {
-                        sourceId: source.id,
                         annotation: `mule_build_${source.id}`
                     },
                     memory: {
@@ -187,7 +204,7 @@ class BuildController {
                                 x: spawn.pos.x,
                                 y: spawn.pos.y
                             },
-                            range: 5
+                            range: 3
                         }]
                     }
                 }); 

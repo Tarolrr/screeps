@@ -15,9 +15,9 @@ class ResourceManager {
     createResourceInstance(type, id, data) {
         const ResourceConstructor = this.resourceTypes.get(type);
         if (ResourceConstructor) {
-            return new ResourceConstructor({ id, type, ...data });
+            return new ResourceConstructor({ id, ...data });
         }
-        return { id, type, ...data };
+        return { id, ...data };
     }
 
     load() {
@@ -58,16 +58,17 @@ class ResourceManager {
             this.disabled = true;
         }
     }
-
-    generateResourceId(type) {
+    generateResourceId(type, spec) {
+        if (spec.metadata && spec.metadata.annotation) {
+            return spec.metadata.annotation;
+        }
         return `${type}_${Game.time}_${++this.lastId}`;
     }
 
     findMatchingResource(type, spec) {
-        const tempResource = this.createResourceInstance(type, 'temp', spec);
         if (this.resources[type]) {
             for (const resource of Object.values(this.resources[type])) {
-                if (resource.matches(tempResource)) {
+                if (resource.matchesAnnotation(spec)) {
                     return resource;
                 }
             }
@@ -76,21 +77,17 @@ class ResourceManager {
     }
 
     applyResource(type, spec) {
-        // Check for existing resource with same annotation
         const existingResource = this.findMatchingResource(type, spec);
         
         if (existingResource) {
-            // If found, update with version bump
             const newSpec = {
                 ...spec,
-                // version: (existingResource.metadata.version || 0) + 1
             };
             this.updateResource(type, existingResource.id, newSpec);
             return existingResource.id;
         }
 
-        // Create new resource if none found
-        const id = this.generateResourceId(type);
+        const id = this.generateResourceId(type, spec);
         if (!this.resources[type]) {
             this.resources[type] = {};
         }
@@ -100,18 +97,44 @@ class ResourceManager {
         return id;
     }
 
+    createJsonDiff(oldJson, newJson) {
+        const maxLength = 100; // Prevent huge diffs
+        let diff = '';
+        for (let i = 0; i < Math.min(oldJson.length, newJson.length, maxLength); i++) {
+            if (oldJson[i] !== newJson[i]) {
+                const context = 10; // Show this many chars before and after difference
+                const start = Math.max(0, i - context);
+                const end = Math.min(Math.min(oldJson.length, newJson.length), i + context);
+                
+                diff += `Difference at position ${i}:\n`;
+                diff += `Old: ...${oldJson.slice(start, end)}...\n`;
+                diff += `New: ...${newJson.slice(start, end)}...\n`;
+                diff += `     ${' '.repeat(i - start)}^\n`;
+                break;
+            }
+        }
+        if (!diff && oldJson.length !== newJson.length) {
+            diff = `Length difference: old=${oldJson.length}, new=${newJson.length}\n`;
+            diff += `Old ends with: ...${oldJson.slice(-50)}\n`;
+            diff += `New ends with: ...${newJson.slice(-50)}\n`;
+        }
+        return diff;
+    }
+
     updateResource(type, id, changes) {
         if (this.resources[type] && this.resources[type][id]) {
             const oldResource = this.resources[type][id];
-            const newResource = this.createResourceInstance(type, id, changes);
             
-            // Compare JSON representations to check for actual changes
-            const oldJson = JSON.stringify(oldResource);
-            const newJson = JSON.stringify(newResource);
-            
-            if (oldJson !== newJson) {
-                this.resources[type][id] = newResource;
+            // Compare spec representations to check for actual changes
+            if (!oldResource.matchesSpec(changes)) {
+                // Preserve status fields from old resource
+                oldResource.updateSpec(changes);
+
                 logger.debug(`Updated ${type} with id ${id}`);
+                // logger.debug(this.createJsonDiff(JSON.stringify(oldResource.toSpec()), JSON.stringify(changes)));
+
+                // logger.debug(JSON.stringify(oldResource.toSpec()));
+                // logger.debug(JSON.stringify(changes));
             }
         }
     }

@@ -2,25 +2,38 @@ const Resource = require('./resources.Resource');
 const resourceManager = require('./resourceManager');
 
 class SpawnProcess extends Resource {
-    constructor(data) {
-        super(data);
-        this.orderId = data.orderId;  // ID of the CreepOrder this process is for
-        this.spawnId = data.spawnId;  // ID of the spawn being used
-        this.startTime = data.startTime || Game.time;
-        this.status = data.status || 'spawning';  // spawning, completed, failed
-        this.creepId = data.creepId;  // ID of the resulting creep (if successful)
-    }
-
-    generateSignature(data) {
-        // Spawn processes are uniquely identified by their orderId and spawnId
-        return JSON.stringify({
-            orderId: data.orderId,
-            spawnId: data.spawnId
+    static get STATE_SCHEMA() {
+        return Resource.combineSchemas(Resource.STATE_SCHEMA, {
+            spawnId: 'string',
+            status: 'string',  // spawning, completed, failed
+            progress: 'number',
+            creepName: 'string'
         });
     }
 
+    static get SPEC_SCHEMA() {
+        return Resource.combineSchemas(Resource.SPEC_SCHEMA, {
+            roomName: 'string',
+            orderId: 'string'
+        });
+    }
+
+    constructor(data) {
+        super(data);
+
+        // Set spec fields
+        this.roomName = data.roomName;
+        this.orderId = data.orderId;
+
+        // Set state fields
+        this.spawnId = data.spawnId;
+        this.status = data.status || 'spawning';
+        this.progress = data.progress || 0;
+        this.creepName = data.creepName;
+    }
+
     get spawn() {
-        return this.spawnId ? Game.getObjectById(this.spawnId) : null;
+        return Game.getObjectById(this.spawnId);
     }
 
     get order() {
@@ -28,16 +41,15 @@ class SpawnProcess extends Resource {
     }
 
     get creep() {
-        return this.creepId ? Game.getObjectById(this.creepId) : null;
+        return this.creepName ? Game.creeps[this.creepName] : null;
     }
 
     isComplete() {
         const spawn = this.spawn;
         if (!spawn || !spawn.spawning) {
-            const creep = Game.creeps[this.orderId];  // Creep ID is same as order ID
+            const creep = Game.creeps[this.creepName];  // Creep ID is same as order ID
             if (creep) {
                 this.status = 'completed';
-                this.creepId = creep.id;
             } else {
                 this.status = 'failed';
             }
@@ -46,13 +58,21 @@ class SpawnProcess extends Resource {
         return false;
     }
 
+    toSpec() {
+        return {
+            ...super.toSpec(),
+            roomName: this.roomName,
+            orderId: this.orderId
+        };
+    }
+
     toJSON() {
         return {
-            orderId: this.orderId,
+            ...super.toJSON(),
             spawnId: this.spawnId,
-            startTime: this.startTime,
             status: this.status,
-            creepId: this.creepId
+            progress: this.progress,
+            creepName: this.creepName
         };
     }
 }

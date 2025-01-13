@@ -1,125 +1,157 @@
 const Resource = require('./resources.Resource');
-const { patterns, isValidPosition } = require('./constructionPatterns');
+const patterns = require('./constructionPatterns');
+const logger = require('./logger');
 
 class ConstructionOrder extends Resource {
+    static get STATE_SCHEMA() {
+        return Resource.combineSchemas(Resource.STATE_SCHEMA, {
+            positions: 'object'  // array of positions
+        });
+    }
+
+    static get SPEC_SCHEMA() {
+        return Resource.combineSchemas(Resource.SPEC_SCHEMA, {
+            structureType: 'string',
+            pattern: 'object',
+            roomName: 'string',
+            priority: 'number',
+            count: 'number'
+        });
+    }
+
     constructor(data) {
         super(data);
+        
+        // Set spec fields
         this.structureType = data.structureType;
         this.pattern = data.pattern;
         this.roomName = data.roomName;
         this.priority = data.priority || 0;
+        this.count = data.count || 0;
         
-        // Generate positions immediately since we have all needed data
+        // Set state fields
         const room = Game.rooms[this.roomName];
-        if (room) {
-            this.positions = this.generatePositions(room);
+        if (Array.isArray(data.positions) && data.positions.length > 0) {
+            this.positions = data.positions;
         } else {
-            this.positions = [];
+            this.positions = this.generatePositions(room);
         }
-        
-        // Track all structures, not just current ones
-        this.structures = data.structures || {};
-        this.constructionSites = data.constructionSites || {};
+    }
+
+    onSpecUpdate() {
+        // Regenerate positions when spec changes
+        const room = Game.rooms[this.roomName];
+        this.positions = this.generatePositions(room);
     }
 
     generatePositions(room) {
-        const positions = [];
-        switch (this.pattern.type) {
-            case 'single':
-                positions.push(this.pattern.params.pos);
-                break;
-            case 'checkboard':
-                positions.push(...patterns.checkboard(
-                    this.pattern.params.startPos,
-                    this.pattern.params.size
-                ));
-                break;
-            case 'line':
-                positions.push(...patterns.line(
-                    this.pattern.params.startPos,
-                    this.pattern.params.length,
-                    this.pattern.params.direction
-                ));
-                break;
-            case 'path':
-                positions.push(...patterns.path(
-                    room,
-                    this.pattern.params.fromPos,
-                    this.pattern.params.toPos
-                ));
-                break;
-            case 'ring':
-                positions.push(...patterns.ring(
-                    this.pattern.params.centerPos,
-                    this.pattern.params.radius
-                ));
-                break;
-            case 'rectangle':
-                positions.push(...patterns.rectangle(
-                    this.pattern.params.startPos,
-                    this.pattern.params.width,
-                    this.pattern.params.height
-                ));
-                break;
+        if (!room) {
+            logger.debug('Room not found, returning empty array');
+            return [];
         }
-        return positions.filter(pos => isValidPosition(room, pos));
-    }
 
-    generateSignature(data) {
-        return JSON.stringify({
-            pattern: data.pattern,
-            structureType: data.structureType,
-            roomName: data.roomName
-        });
-    }
+        const patternFunc = patterns[this.pattern.type];
+        if (!patternFunc) {
+            logger.debug(`Unknown pattern type: ${this.pattern.type}`);
+            return [];
+        }
 
-    checkStructures(room) {
-        // Check all positions for missing structures
-        for (let i = 0; i < this.positions.length; i++) {
-            const pos = this.positions[i];
-            const structureId = this.structures[i];
+        const validPositions = [];
+        let index = 0;
+
+        while (validPositions.length < this.count || !this.count) {
+            const { positions, outOfBounds } = patternFunc(this.pattern.params, index);
             
-            if (structureId) {
-                const structure = Game.getObjectById(structureId);
-                if (!structure) {
-                    // Structure was destroyed/decayed
-                    delete this.structures[i];
-                    delete this.constructionSites[i];
-                }
+            if (outOfBounds && positions.length === 0) {
+                break;
             }
 
-            const siteId = this.constructionSites[i];
-            if (siteId) {
-                const site = Game.getObjectById(siteId);
-                if (!site) {
-                    // Check if structure exists (might have been completed)
-                    const roomPos = new RoomPosition(pos.x, pos.y, this.roomName);
-                    const structures = roomPos.lookFor(LOOK_STRUCTURES);
-                    const matchingStructure = structures.find(s => s.structureType === this.structureType);
-                    
-                    if (matchingStructure) {
-                        this.structures[i] = matchingStructure.id;
+            for (const pos of positions) {
+                if (this.isValidPosition(room, pos)) {
+                    validPositions.push(pos);
+                    if (validPositions.length >= this.count && this.count) {
+                        break;
                     }
-                    delete this.constructionSites[i];
                 }
             }
+            index++;
         }
+
+        return validPositions;
     }
 
-    needsConstruction(posIndex) {
-        return !this.structures[posIndex] && !this.constructionSites[posIndex];
+    isValidPosition(room, pos) {
+        const roomPos = new RoomPosition(pos.x, pos.y, this.roomName);
+
+        // Check terrain
+        const terrain = room.getTerrain();
+        if (terrain.get(pos.x, pos.y) === TERRAIN_MASK_WALL) {
+            return false;
+        }
+
+        // Check existing structures
+        const structures = roomPos.lookFor(LOOK_STRUCTURES);
+        for (const structure of structures) {
+            if (structure.structureType === this.structureType) {
+                return true;
+            } else if (![STRUCTURE_ROAD, STRUCTURE_RAMPART].includes(structure.structureType)) {
+                return false;
+            }
+        }
+
+        // Check construction sites
+        const sites = roomPos.lookFor(LOOK_CONSTRUCTION_SITES);
+        for (const site of sites) {
+            if (site.structureType === this.structureType) {
+                return true;
+            } else if (![STRUCTURE_ROAD, STRUCTURE_RAMPART].includes(site.structureType)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    generateConstructionSitePositions(count) {
+        const occupiedCount = this.positions.filter(pos => {
+            const roomPos = new RoomPosition(pos.x, pos.y, this.roomName);
+            const structures = roomPos.lookFor(LOOK_STRUCTURES);
+            const sites = roomPos.lookFor(LOOK_CONSTRUCTION_SITES);
+            const isOccupied = structures.some(s => s.structureType === this.structureType) ||
+                              sites.some(s => s.structureType === this.structureType);
+            return isOccupied;
+        }).length;
+
+        const availablePositions = this.positions.filter(pos => {
+            const roomPos = new RoomPosition(pos.x, pos.y, this.roomName);
+            const structures = roomPos.lookFor(LOOK_STRUCTURES);
+            const sites = roomPos.lookFor(LOOK_CONSTRUCTION_SITES);
+            const isAvailable = structures.every(s => s.structureType === STRUCTURE_ROAD || s.structureType === STRUCTURE_RAMPART) &&
+                               sites.every(s => s.structureType === STRUCTURE_ROAD || s.structureType === STRUCTURE_RAMPART);
+            return isAvailable;
+        });
+
+        const targetCount = this.count === 0 ? count : Math.min(count || this.count, this.count - occupiedCount);
+        const result = this.count === 0 ? availablePositions : availablePositions.slice(0, targetCount);
+        const finalResult = result.map(pos => new RoomPosition(pos.x, pos.y, this.roomName));
+        return finalResult;
+    }
+
+    toSpec() {
+        return {
+            ...super.toSpec(),
+            structureType: this.structureType,
+            pattern: this.pattern,
+            roomName: this.roomName,
+            priority: this.priority,
+            count: this.count
+        };
     }
 
     toJSON() {
         return {
             ...super.toJSON(),
-            structureType: this.structureType,
-            pattern: this.pattern,
-            roomName: this.roomName,
-            priority: this.priority,
-            positions: this.positions,
-            constructionSites: this.constructionSites,
-            structures: this.structures
+            positions: this.positions
         };
     }
 }

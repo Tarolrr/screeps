@@ -28,10 +28,10 @@ function run(creep) {
 
     // Switch tasks if needed
     if (creep.memory.state === STATE.COLLECTING && creep.store.getFreeCapacity() === 0) {
-        logger.debug(`Builder ${creep.name} inventory full, switching to BUILDING`);
+        // logger.debug(`Builder ${creep.name} inventory full, switching to BUILDING`);
         creep.memory.state = STATE.BUILDING;
     } else if (creep.memory.state === STATE.BUILDING && creep.store.getUsedCapacity() === 0) {
-        logger.debug(`Builder ${creep.name} inventory empty, switching to COLLECTING`);
+        // logger.debug(`Builder ${creep.name} inventory empty, switching to COLLECTING`);
         creep.memory.state = STATE.COLLECTING;
     }
 
@@ -63,7 +63,7 @@ function handleIdleState(creep) {
         creep.memory.targetSiteId = constructionSite.id;
         creep.memory.state = STATE.COLLECTING;
     } else {
-        logger.debug(`Builder ${creep.name} no construction sites found, staying IDLE`);
+        // logger.debug(`Builder ${creep.name} no construction sites found, staying IDLE`);
     }
 }
 

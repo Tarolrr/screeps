@@ -26,7 +26,6 @@ class RoomController {
                         schema: CreepOrder.SCHEMAS.MULE,
                         roomName: room.name,
                         metadata: {
-                            sourceId: source.id,
                             annotation: `mule_spawn_${source.id}`
                         },
                         memory: {
@@ -41,8 +40,14 @@ class RoomController {
                                 range: 3
                             }],
                             deliverTemplates: [{
-                                type: 'entity',
-                                id: spawn.id
+                                type: 'area',
+                                entityType: 'structure',
+                                structureTypes: STRUCTURE_SPAWN + " " + STRUCTURE_EXTENSION, 
+                                range: 50,
+                                pos: {
+                                    x: spawn.pos.x,
+                                    y: spawn.pos.y
+                                }
                             }]
                         }
                     });    
@@ -52,7 +57,6 @@ class RoomController {
                         schema: CreepOrder.SCHEMAS.MULE,
                         roomName: room.name,
                         metadata: {
-                            sourceId: source.id,
                             annotation: `mule_controller_${source.id}`
                         },
                         memory: {
@@ -73,7 +77,7 @@ class RoomController {
                                     x: controller.pos.x,
                                     y: controller.pos.y
                                 },
-                                range: 5
+                                range: 4
                             }]
                         }
                     });                    
@@ -83,7 +87,6 @@ class RoomController {
                         schema: CreepOrder.SCHEMAS.UPGRADER,
                         roomName: room.name,
                         metadata: {
-                            sourceId: source.id,
                             annotation: `upgrader_${source.id}`
                         },
                         memory: {

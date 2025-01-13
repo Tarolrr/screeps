@@ -1,36 +1,34 @@
 const Resource = require('./resources.Resource');
 
 class SourceResource extends Resource {
-    constructor(data) {
-        super(data);
-        this.sourceId = data.sourceId;
-        this.roomName = data.roomName;
-        this.workPlaces = data.workPlaces || [];
-        this._source = null;
+    static get STATE_SCHEMA() {
+        return Resource.STATE_SCHEMA;
     }
 
-    get source() {
-        if (!this._source) {
-            this._source = Game.getObjectById(this.sourceId);
-        }
-        return this._source;
-    }
-
-    generateSignature(data) {
-        // Source resources are uniquely identified by their sourceId
-        return JSON.stringify({
-            sourceId: data.sourceId
+    static get SPEC_SCHEMA() {
+        return Resource.combineSchemas(Resource.SPEC_SCHEMA, {
+            roomName: 'string',
+            sourceId: 'string'
         });
     }
 
-    // Serialize only the necessary data
-    toJSON() {
+    constructor(data) {
+        super(data);
+        
+        // Set spec fields
+        this.roomName = data.roomName;
+        this.sourceId = data.sourceId;
+    }
+
+    get source() {
+        return Game.getObjectById(this.sourceId);
+    }
+
+    toSpec() {
         return {
-            id: this.id,
-            sourceId: this.sourceId,
+            ...super.toSpec(),
             roomName: this.roomName,
-            workPlaces: this.workPlaces,
-            metadata: this.metadata
+            sourceId: this.sourceId
         };
     }
 }
