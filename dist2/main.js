@@ -28,6 +28,11 @@ resourceManager.registerResourceType("creepOrder", creepOrder);
 resourceManager.registerResourceType("constructionOrder", ConstructionOrder);
 resourceManager.load();
 
+buildController.initialize();
+sourceController.initialize();
+spawnController.initialize();
+roomController.initialize();
+
 logger.debug("Initialization complete");
 
 module.exports.loop = function () {
@@ -50,6 +55,5 @@ module.exports.loop = function () {
         
     } catch (error) {
         logger.error("Error in main loop: " + error.stack);
-        initialized = false;  // Force re-initialization on error
     }
 }

@@ -2,10 +2,11 @@ const resourceManager = require('./resourceManager');
 const logger = require('./logger');
 
 class SpawnController {
-    constructor() {
-        this.lastReconcileTime = 0;
+    initialize() {
     }
+
     reconcile() {
+        if (Game.time % 10 !== 0) return;
         // Remove memory of missing creeps
         for (const creepName in Memory.creeps) {
             if (!Game.creeps[creepName]) {

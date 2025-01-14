@@ -4,25 +4,81 @@ const resourceManager = require('./resourceManager');
 const logger = require('./logger');
 
 class BuildController {
-    constructor() {
-        // Room agnostic controller
+    initialize() {
+        this.applyResources();
     }
 
-    createBuilderOrder(room, priority, collectTemplates) {
-        return resourceManager.applyResource('creepOrder', {
-            role: 'builder',
-            schema: CreepOrder.SCHEMAS.BUILDER,
-            priority: priority,
-            roomName: room.name,
-            metadata: {
-                annotation: `builder_${room.name}`
-            },
-            memory: {
+    applyResources() {
+        // Only process rooms with spawns
+        for (const room of Object.values(Game.rooms)) {
+            const spawn = room.find(FIND_MY_SPAWNS)[0];
+            if (!spawn) continue;
+
+            // Ensure basic structures are queued
+            this.ensureBasicStructures(room);
+
+            resourceManager.applyResource('creepOrder', {
                 role: 'builder',
-                collectTemplates: collectTemplates,
+                schema: CreepOrder.SCHEMAS.BUILDER,
+                priority: 40,
+                roomName: room.name,
+                metadata: {
+                    annotation: `builder_${room.name}`
+                },
+                memory: {
+                    role: 'builder',
+                    collectTemplates: [{
+                        type: 'area',
+                        entityType: 'ground',
+                        pos: {
+                            x: spawn.pos.x,
+                            y: spawn.pos.y
+                        },
+                        range: 5
+                    }],
+                }
+            });
+
+            // Handle mule for construction
+            const sourceResources = resourceManager.getResourcesOfType('source')
+                .filter(source => source.roomName === room.name);
+            
+            for (const sourceResource of sourceResources) {
+                const source = Game.getObjectById(sourceResource.sourceId);
+                resourceManager.applyResource('creepOrder', {
+                    role: 'mule',
+                    priority: 49,
+                    schema: CreepOrder.SCHEMAS.MULE,
+                    roomName: room.name,
+                    metadata: {
+                        annotation: `mule_build_${source.id}`
+                    },
+                    memory: {
+                        role: 'mule',
+                        collectTemplates: [{
+                            type: 'area',
+                            entityType: 'ground',
+                            pos: {
+                                x: source.pos.x,
+                                y: source.pos.y
+                            },
+                            range: 3
+                        }],
+                        deliverTemplates: [{
+                            type: 'area',
+                            entityType: 'ground',
+                            pos: {
+                                x: spawn.pos.x,
+                                y: spawn.pos.y
+                            },
+                            range: 3
+                        }]
+                    }
+                }); 
             }
-        });
+        }
     }
+
 
     queueStructurePattern(roomName, structureType, pattern, priority = 0, annotation, count=0) {
         // logger.debug(`Queuing construction order for ${structureType} in room ${roomName}, priority: ${priority}, count: ${count}, annotation: ${annotation}`);
@@ -111,18 +167,23 @@ class BuildController {
     }
 
     reconcile() {
+        if (Game.time % 100 !== 0) return;
         // Only process rooms with spawns
         for (const room of Object.values(Game.rooms)) {
             const spawn = room.find(FIND_MY_SPAWNS)[0];
             if (!spawn) continue;
 
-            // Ensure basic structures are queued
-            this.ensureBasicStructures(room);
-
             // Handle construction orders
             const constructionOrders = resourceManager.getResourcesOfType('constructionOrder')
             .filter(order => order.roomName === room.name)
             .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
+            for (const order of constructionOrders) {
+                // manage structures
+                order.validateOwnedStructures();
+                order.claimStructures(order.positions);
+                order.removeExcessStructures();
+            }
 
             const MAX_CONSTRUCTION_SITES = 5; // We can adjust this value
             let currentSites = room.find(FIND_MY_CONSTRUCTION_SITES).length;
@@ -153,62 +214,7 @@ class BuildController {
                 }
             }
 
-
-            // Resources part
-
-            // Ensure basic structures are queued
-            this.ensureBasicStructures(room);
-
-            // Handle builder creep order
-            const collectTemplates = [{
-                type: 'area',
-                entityType: 'ground',
-                pos: {
-                    x: spawn.pos.x,
-                    y: spawn.pos.y
-                },
-                range: 5
-            }];
-            
-            this.createBuilderOrder(room, 40, collectTemplates);
-
-            // Handle mule for construction
-            const sourceResources = resourceManager.getResourcesOfType('source')
-                .filter(source => source.roomName === room.name);
-            
-            for (const sourceResource of sourceResources) {
-                const source = Game.getObjectById(sourceResource.sourceId);
-                resourceManager.applyResource('creepOrder', {
-                    role: 'mule',
-                    priority: 49,
-                    schema: CreepOrder.SCHEMAS.MULE,
-                    roomName: room.name,
-                    metadata: {
-                        annotation: `mule_build_${source.id}`
-                    },
-                    memory: {
-                        role: 'mule',
-                        collectTemplates: [{
-                            type: 'area',
-                            entityType: 'ground',
-                            pos: {
-                                x: source.pos.x,
-                                y: source.pos.y
-                            },
-                            range: 3
-                        }],
-                        deliverTemplates: [{
-                            type: 'area',
-                            entityType: 'ground',
-                            pos: {
-                                x: spawn.pos.x,
-                                y: spawn.pos.y
-                            },
-                            range: 3
-                        }]
-                    }
-                }); 
-            }
+            this.applyResources();
         }
     }
 }

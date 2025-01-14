@@ -4,11 +4,11 @@ const CreepOrder = require('./resources.creepOrder');
 const PriorityCalculator = require('./utils.priority');
 
 class RoomController {
-    constructor() {
-        
+    initialize() {
+        this.applyResources();
     }
 
-    reconcile() {
+    applyResources() {
         for (const room of Object.values(Game.rooms)) {
             const sources = room.find(FIND_SOURCES);
             const spawns = room.find(FIND_MY_SPAWNS);
@@ -96,6 +96,11 @@ class RoomController {
                 }
             }
         }
+    }
+
+    reconcile() {
+        if (Game.time % 100 !== 0) return;
+        this.applyResources();
     }
 }
 

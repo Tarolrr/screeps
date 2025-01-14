@@ -5,7 +5,8 @@ const logger = require('./logger');
 class ConstructionOrder extends Resource {
     static get STATE_SCHEMA() {
         return Resource.combineSchemas(Resource.STATE_SCHEMA, {
-            positions: 'object'  // array of positions
+            positions: 'object',  // array of positions
+            ownedStructureIds: 'object'  // array of structure IDs we own
         });
     }
 
@@ -36,12 +37,29 @@ class ConstructionOrder extends Resource {
         } else {
             this.positions = this.generatePositions(room);
         }
+        
+        this.ownedStructureIds = data.ownedStructureIds || [];
+        this._previousType = this.structureType;
+        this.hasWrongTypeStructures = false;
+        this.hasWrongPositionStructures = false;
     }
 
     onSpecUpdate() {
-        // Regenerate positions when spec changes
+        this.hasWrongPositionStructures = true;
+        const oldPositions = this.positions;
         const room = Game.rooms[this.roomName];
         this.positions = this.generatePositions(room);
+        
+        if (this.structureType === this._previousType) {
+            this.claimStructures(oldPositions);
+        } else {
+            this.hasWrongTypeStructures = true;
+        }
+        this.claimStructures(this.positions);
+        this.validateOwnedStructures();
+        this.removeExcessStructures();
+        
+        this._previousType = this.structureType;
     }
 
     generatePositions(room) {
@@ -113,28 +131,126 @@ class ConstructionOrder extends Resource {
     }
 
     generateConstructionSitePositions(count) {
-        const occupiedCount = this.positions.filter(pos => {
-            const roomPos = new RoomPosition(pos.x, pos.y, this.roomName);
-            const structures = roomPos.lookFor(LOOK_STRUCTURES);
-            const sites = roomPos.lookFor(LOOK_CONSTRUCTION_SITES);
-            const isOccupied = structures.some(s => s.structureType === this.structureType) ||
-                              sites.some(s => s.structureType === this.structureType);
-            return isOccupied;
-        }).length;
-
+        
+        // Count includes both existing structures and potential sites
+        const targetCount = Math.min(
+            count || this.count,
+            this.count - this.ownedStructureIds.length
+        );
+        
+        // Only generate sites for positions that don't have our owned structures
         const availablePositions = this.positions.filter(pos => {
-            const roomPos = new RoomPosition(pos.x, pos.y, this.roomName);
-            const structures = roomPos.lookFor(LOOK_STRUCTURES);
-            const sites = roomPos.lookFor(LOOK_CONSTRUCTION_SITES);
-            const isAvailable = structures.every(s => s.structureType === STRUCTURE_ROAD || s.structureType === STRUCTURE_RAMPART) &&
-                               sites.every(s => s.structureType === STRUCTURE_ROAD || s.structureType === STRUCTURE_RAMPART);
-            return isAvailable;
+            return !this.ownedStructureIds.some(id => {
+                const structure = Game.getObjectById(id);
+                return structure && 
+                       structure.pos.x === pos.x && 
+                       structure.pos.y === pos.y;
+            });
         });
+        
+        return availablePositions
+            .slice(0, targetCount)
+            .map(pos => new RoomPosition(pos.x, pos.y, this.roomName));
+    }
 
-        const targetCount = this.count === 0 ? count : Math.min(count || this.count, this.count - occupiedCount);
-        const result = this.count === 0 ? availablePositions : availablePositions.slice(0, targetCount);
-        const finalResult = result.map(pos => new RoomPosition(pos.x, pos.y, this.roomName));
-        return finalResult;
+    validateOwnedStructures() {
+        this.ownedStructureIds = this.ownedStructureIds.filter(id => {
+            return Game.getObjectById(id);
+        });
+    }
+
+    claimStructures(positions) {
+        const room = Game.rooms[this.roomName];
+        for (const pos of positions) {
+            const structures = room.lookForAt(LOOK_STRUCTURES, pos.x, pos.y)
+                .filter(s => s.structureType === this.structureType);
+            
+            for (const structure of structures) {
+                if (!this.ownedStructureIds.includes(structure.id)) {
+                    this.ownedStructureIds.push(structure.id);
+                }
+            }
+        }
+    }
+
+    removeExcessStructures() {
+        // clean structures of wrong type from previous specs. 
+        // (can't remove them in onSpecUpdate() because of possible hostile creeps)
+        let count = this.ownedStructureIds.length;
+        
+        if (this.hasWrongTypeStructures) {
+            this.hasWrongTypeStructures = false;
+            for (const id of this.ownedStructureIds) {
+                const structure = Game.getObjectById(id);
+                if (structure.structureType !== this.structureType) {
+                    if (structure.destroy() === OK) {
+                        count--;
+                    }
+                    else {
+                        this.hasWrongTypeStructures = true;
+                    }
+                }
+            }
+        }
+        // in case we don't have limit, remove all structures in wrong positions
+        if (!this.count) {
+            this.hasWrongPositionStructures = false;
+            for (const id of this.ownedStructureIds) {
+                const structure = Game.getObjectById(id);
+                const pos = structure.pos;
+                if (!this.positions.some(p => p.x === pos.x && p.y === pos.y)) {
+                    if (structure.destroy() !== OK) {
+                        this.hasWrongPositionStructures = true;
+                    }
+                }
+            }
+        }
+        // remove excess structures if we're over count
+        else {
+            if (this.hasWrongPositionStructures) {
+                while (count >= this.count) {
+                    let tmpWrongPositionStructures = false;
+                    for (const id of this.ownedStructureIds) {
+                        const structure = Game.getObjectById(id);
+                        const pos = structure.pos;
+                        if (!this.positions.some(p => p.x === pos.x && p.y === pos.y)) {
+                            if (structure.destroy() === OK) {
+                                count--;
+                                tmpWrongPositionStructures = true;
+                                break;
+                            } else {
+                                // If we can't destroy it, there's probably 
+                                // a hostile creep in the room - doesn't make sense to continue
+                                return;
+                            }
+                        }
+                    }
+                    if (!tmpWrongPositionStructures) {
+                        this.hasWrongPositionStructures = false;
+                        break;
+                    }
+                }
+                // restriction is less strict for right position structures
+                // so we don't delete and recreate the last one
+                while (count > this.count) {
+                    for (let i = this.positions.length - 1; i >= 0; i--) {
+                        const pos = this.positions[i];
+                        const structuresAtPos = Game.rooms[this.roomName].lookForAt(LOOK_STRUCTURES, pos.x, pos.y);
+                        const structure = structuresAtPos.find(s => s.structureType === this.structureType);
+                        if (structure) {
+                            if (structure.destroy() === OK) {
+                                count--;
+                                if (count <= this.count) {
+                                    return;
+                                }
+                            } else {
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     toSpec() {
@@ -151,7 +267,10 @@ class ConstructionOrder extends Resource {
     toJSON() {
         return {
             ...super.toJSON(),
-            positions: this.positions
+            positions: this.positions,
+            ownedStructureIds: this.ownedStructureIds,
+            hasWrongTypeStructures: this.hasWrongTypeStructures,
+            hasWrongPositionStructures: this.hasWrongPositionStructures
         };
     }
 }
