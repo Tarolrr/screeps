@@ -6,7 +6,9 @@ class ConstructionOrder extends Resource {
     static get STATE_SCHEMA() {
         return Resource.combineSchemas(Resource.STATE_SCHEMA, {
             positions: 'object',  // array of positions
-            ownedStructureIds: 'object'  // array of structure IDs we own
+            ownedStructureIds: 'object',  // array of structure IDs we own
+            hasWrongTypeStructures: 'boolean',
+            hasWrongPositionStructures: 'boolean'
         });
     }
 
@@ -138,13 +140,15 @@ class ConstructionOrder extends Resource {
             this.count - this.ownedStructureIds.length
         );
         
-        // Only generate sites for positions that don't have our owned structures
+        // Only generate sites for positions that don't have our owned structures and don't have construction sites
         const availablePositions = this.positions.filter(pos => {
             return !this.ownedStructureIds.some(id => {
                 const structure = Game.getObjectById(id);
                 return structure && 
                        structure.pos.x === pos.x && 
                        structure.pos.y === pos.y;
+            })&& !Game.rooms[this.roomName].lookForAt(LOOK_CONSTRUCTION_SITES, pos.x, pos.y).some(s => {
+                return s.structureType === this.structureType || ![STRUCTURE_ROAD, STRUCTURE_RAMPART].includes(s.structureType);
             });
         });
         
