@@ -1,7 +1,0 @@
-servers:
-    gcp:
-        host: 35.232.69.207
-        port: 21025
-        secure: false
-        username: tarolrr
-        password: d737ao
