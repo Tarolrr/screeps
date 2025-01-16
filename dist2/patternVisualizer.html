@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Screeps Construction Pattern Visualizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #1e1e1e;
+            color: #fff;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        canvas {
+            border: 1px solid #666;
+            margin: 10px;
+            background: #2d2d2d;
+        }
+        .controls {
+            margin: 20px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        select, input, button {
+            padding: 5px 10px;
+            background: #3d3d3d;
+            color: #fff;
+            border: 1px solid #666;
+            border-radius: 4px;
+        }
+        .pattern-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            padding: 10px;
+            border: 1px solid #666;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Screeps Construction Pattern Visualizer</h2>
+        <div class="controls">
+            <div class="pattern-group">
+                <label>Pattern:</label>
+                <select id="patternSelect">
+                    <option value="single">Single</option>
+                    <option value="checkboard">Checkboard</option>
+                    <option value="line">Line</option>
+                    <option value="ring">Ring</option>
+                    <option value="rectangle">Rectangle</option>
+                    <option value="parallelLines">Parallel Lines</option>
+                </select>
+            </div>
+            <div class="pattern-group">
+                <label>Pattern Size:</label>
+                <input type="number" id="sizeInput" value="5" min="1" max="50">
+            </div>
+            <div class="pattern-group">
+                <label>Steps:</label>
+                <input type="number" id="stepsInput" value="10" min="1" max="50">
+            </div>
+            <button onclick="redraw()">Update</button>
+        </div>
+        <canvas id="canvas" width="500" height="500"></canvas>
+    </div>
+
+    <script>
+        const MAP_SIZE = 50;
+        const CELL_SIZE = 10;
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const RIGHT = 1;
+        const LEFT = 2;
+        const TOP = 3;
+        const BOTTOM = 4;
+
+        const patterns = {
+            single: (pos, index) => {
+                if (index > 0) {
+                    return { positions: [], outOfBounds: true };
+                }
+                return {
+                    positions: [pos],
+                    outOfBounds: false
+                };
+            },
+
+            checkboard: ({ x, y }, size, index) => {
+                const positions = [];
+                let count = 0;
+                const radius = Math.floor(size / 2);
+                
+                for (let dx = -radius; dx <= radius; dx++) {
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        if ((dx + dy) % 2 === 0) {
+                            if (count === index) {
+                                positions.push({ x: x + dx, y: y + dy });
+                            }
+                            count++;
+                        }
+                    }
+                }
+                
+                return {
+                    positions,
+                    outOfBounds: count <= index
+                };
+            },
+
+            line: ({ x, y }, size, index) => {
+                if (index >= size) {
+                    return { positions: [], outOfBounds: true };
+                }
+                return {
+                    positions: [{ x: x + index, y }],
+                    outOfBounds: false
+                };
+            },
+
+            ring: ({ x, y }, radius, index) => {
+                const positions = [];
+                let count = 0;
+                
+                for (let dx = -radius; dx <= radius; dx++) {
+                    for (let dy = -radius; dy <= radius; dy++) {
+                        if (Math.abs(dx) === radius || Math.abs(dy) === radius) {
+                            if (count === index) {
+                                positions.push({ x: x + dx, y: y + dy });
+                            }
+                            count++;
+                        }
+                    }
+                }
+                
+                return {
+                    positions,
+                    outOfBounds: count <= index
+                };
+            },
+
+            rectangle: ({ x, y }, size, index) => {
+                if (index >= size * size) {
+                    return { positions: [], outOfBounds: true };
+                }
+                
+                const row = Math.floor(index / size);
+                const col = index % size;
+                
+                return {
+                    positions: [{ x: x + col, y: y + row }],
+                    outOfBounds: false
+                };
+            },
+
+            parallelLines: ({ x, y }, size, index) => {
+                if (index >= size * 4) {  // 2 lines * 2 thickness * size length
+                    return { positions: [], outOfBounds: true };
+                }
+
+                const lineIndex = Math.floor(index / size);  // 0-3 for the four parallel rows
+                const positionInLine = index % size;
+
+                return {
+                    positions: [{
+                        x: x + positionInLine,
+                        y: y + (lineIndex < 2 ? lineIndex : lineIndex + 1)  // Add 1 space gap between lines
+                    }],
+                    outOfBounds: false
+                };
+            }
+        };
+
+        function drawGrid() {
+            ctx.strokeStyle = '#444';
+            ctx.lineWidth = 0.5;
+            
+            for (let i = 0; i <= MAP_SIZE; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * CELL_SIZE, 0);
+                ctx.lineTo(i * CELL_SIZE, MAP_SIZE * CELL_SIZE);
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.moveTo(0, i * CELL_SIZE);
+                ctx.lineTo(MAP_SIZE * CELL_SIZE, i * CELL_SIZE);
+                ctx.stroke();
+            }
+        }
+
+        function drawCell(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+        }
+
+        function redraw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawGrid();
+            
+            const pattern = document.getElementById('patternSelect').value;
+            const size = parseInt(document.getElementById('sizeInput').value);
+            const steps = parseInt(document.getElementById('stepsInput').value);
+            
+            const centerX = Math.floor(MAP_SIZE / 2);
+            const centerY = Math.floor(MAP_SIZE / 2);
+            
+            for (let i = 0; i < steps; i++) {
+                const result = patterns[pattern](
+                    { x: centerX, y: centerY },
+                    size,
+                    i
+                );
+                
+                if (!result.outOfBounds) {
+                    result.positions.forEach(pos => {
+                        const hue = (i * 360 / steps) % 360;
+                        drawCell(pos.x, pos.y, `hsl(${hue}, 70%, 50%)`);
+                    });
+                }
+            }
+        }
+
+        redraw();
+    </script>
+</body>
+</html>

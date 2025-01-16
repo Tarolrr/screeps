@@ -264,6 +264,25 @@ const patterns = {
         }
         
         return { positions: [], outOfBounds: true };
+    },
+
+    parallelLines: ({ startPos, size }, index) => {
+        if (index >= size * 4) {  // 2 lines * 2 thickness * size length
+            return { positions: [], outOfBounds: true };
+        }
+
+        const lineIndex = Math.floor(index / size);  // 0-3 for the four parallel rows
+        const positionInLine = index % size;
+
+        const x = startPos.x + positionInLine;
+        const y = startPos.y + (lineIndex < 2 ? lineIndex : lineIndex + 1);  // Add 1 space gap between lines
+        
+        const outOfBounds = x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE;
+        
+        return {
+            positions: outOfBounds ? [] : [{ x, y }],
+            outOfBounds
+        };
     }
 };
 
