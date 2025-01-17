@@ -2,90 +2,119 @@ const logger = require('./logger');
 
 const MAP_SIZE = 50;
 
+// Helper function to check if a pattern's bounding box touches walls
+function isValidPosition(positions, terrain) {
+    if (!positions.length) return false;
+    
+    let minX = MAP_SIZE, minY = MAP_SIZE, maxX = 0, maxY = 0;
+    positions.forEach(pos => {
+        minX = Math.min(minX, pos.x);
+        minY = Math.min(minY, pos.y);
+        maxX = Math.max(maxX, pos.x);
+        maxY = Math.max(maxY, pos.y);
+    });
+
+    // Check map bounds
+    if (minX < 0 || minY < 0 || maxX >= MAP_SIZE || maxY >= MAP_SIZE) {
+        return false;
+    }
+
+    // Check walls
+    for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+            const terrainType = terrain[y * MAP_SIZE + x];
+            if (terrainType === '1' || terrainType === '3') {  // Wall
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
 const patterns = {
-    single: ({ pos }, index) => {
+    single: ({ startPos }, index) => {
+        if (index === undefined) {
+            return {
+                positions: [startPos],
+                outOfBounds: false
+            };
+        }
+        
         if (index > 0) {
             return { positions: [], outOfBounds: true };
         }
         
-        const x = pos.x;
-        const y = pos.y;
-        const outOfBounds = x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE;
-        
         return {
-            positions: outOfBounds ? [] : [pos],
-            outOfBounds
+            positions: [startPos],
+            outOfBounds: true
         };
     },
 
     checkboard: ({ startPos, size = 3, centered = false }, index) => {
         const positions = [];
-        let outOfBounds = false;
         
         if (centered) {
             const radius = Math.floor(size / 2);
-            let count = 0;
             
-            for (let x = -radius; x <= radius && count <= index; x++) {
-                for (let y = -radius; y <= radius && count <= index; y++) {
-                    const newX = startPos.x + x;
-                    const newY = startPos.y + y;
-                    
+            for (let x = -radius; x <= radius; x++) {
+                for (let y = -radius; y <= radius; y++) {
                     if ((x + y) % 2 === 0) {
+                        const newX = startPos.x + x;
+                        const newY = startPos.y + y;
+                        
                         if (newX >= 0 && newX < MAP_SIZE && newY >= 0 && newY < MAP_SIZE) {
-                            if (count === index) {
-                                positions.push({ x: newX, y: newY });
-                            }
-                            count++;
+                            positions.push({ x: newX, y: newY });
                         }
                     }
                 }
             }
-            
-            if (count <= index) {
-                outOfBounds = true;
-            }
-            
         } else {
-            let count = 0;
-            for (let x = 0; x < size && count <= index; x++) {
-                for (let y = 0; y < size && count <= index; y++) {
-                    const newX = startPos.x + x;
-                    const newY = startPos.y + y;
-                    
+            for (let x = 0; x < size; x++) {
+                for (let y = 0; y < size; y++) {
                     if ((x + y) % 2 === 0) {
+                        const newX = startPos.x + x;
+                        const newY = startPos.y + y;
+                        
                         if (newX >= 0 && newX < MAP_SIZE && newY >= 0 && newY < MAP_SIZE) {
-                            if (count === index) {
-                                positions.push({ x: newX, y: newY });
-                            }
-                            count++;
-                        } else {
-                            outOfBounds = true;
+                            positions.push({ x: newX, y: newY });
                         }
                     }
                 }
-            }
-            
-            if (count <= index) {
-                outOfBounds = true;
             }
         }
-        
-        return { positions, outOfBounds };
+
+        if (index === undefined) {
+            return { positions, outOfBounds: false };
+        }
+
+        return {
+            positions: index < positions.length ? [positions[index]] : [],
+            outOfBounds: index >= positions.length
+        };
     },
 
-    line: ({ startPos, direction = RIGHT }, index) => {
+    line: ({ startPos, size, direction = RIGHT }, index) => {
+        const positions = [];
         const dx = direction === RIGHT ? 1 : (direction === LEFT ? -1 : 0);
         const dy = direction === BOTTOM ? 1 : (direction === TOP ? -1 : 0);
         
-        const x = startPos.x + (dx * index);
-        const y = startPos.y + (dy * index);
-        
-        const outOfBounds = x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE;
-        
+        for (let i = 0; i < size; i++) {
+            const x = startPos.x + (dx * i);
+            const y = startPos.y + (dy * i);
+            
+            if (x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE) {
+                positions.push({ x, y });
+            }
+        }
+
+        if (index === undefined) {
+            return { positions, outOfBounds: false };
+        }
+
         return {
-            positions: outOfBounds ? [] : [{ x, y }],
-            outOfBounds
+            positions: index < positions.length ? [positions[index]] : [],
+            outOfBounds: index >= positions.length
         };
     },
 
@@ -196,7 +225,7 @@ const patterns = {
                     positions: [{ x: testX, y: testY }],
                     outOfBounds: false
                 };
-            }
+        }
         }
 
         // If no valid offset position found, return the original path position
@@ -206,82 +235,128 @@ const patterns = {
         };
     },
 
-    ring: ({ centerPos, radius }, index) => {
+    ring: ({ startPos, radius }, index) => {
         const positions = [];
-        let count = 0;
-        let outOfBounds = false;
         
-        // Calculate total points in ring
-        const totalPoints = radius * 8;
-        if (index >= totalPoints) {
-            return { positions: [], outOfBounds: true };
-        }
-        
-        // Generate points in clockwise order
-        for (let x = -radius; x <= radius && count <= index; x++) {
-            for (let y = -radius; y <= radius && count <= index; y++) {
-                if (Math.abs(x) === radius || Math.abs(y) === radius) {
-                    const newX = centerPos.x + x;
-                    const newY = centerPos.y + y;
-                    
-                    if (newX >= 0 && newX < MAP_SIZE && newY >= 0 && newY < MAP_SIZE) {
-                        if (count === index) {
-                            positions.push({ x: newX, y: newY });
-                        }
-                        count++;
-                    } else {
-                        outOfBounds = true;
+        for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                if (Math.abs(dx) === radius || Math.abs(dy) === radius) {
+                    const x = startPos.x + dx;
+                    const y = startPos.y + dy;
+                    if (x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE) {
+                        positions.push({ x, y });
                     }
                 }
             }
         }
-        
-        return { positions, outOfBounds };
+
+        if (index === undefined) {
+            return { positions, outOfBounds: false };
+        }
+
+        return {
+            positions: index < positions.length ? [positions[index]] : [],
+            outOfBounds: index >= positions.length
+        };
     },
 
     rectangle: ({ startPos, width, height, filled = false }, index) => {
         const positions = [];
-        let count = 0;
-        let outOfBounds = false;
         
         for (let x = 0; x < width; x++) {
             for (let y = 0; y < height; y++) {
-                const newX = startPos.x + x;
-                const newY = startPos.y + y;
-                
                 if (filled || x === 0 || x === width - 1 || y === 0 || y === height - 1) {
+                    const newX = startPos.x + x;
+                    const newY = startPos.y + y;
                     if (newX >= 0 && newX < MAP_SIZE && newY >= 0 && newY < MAP_SIZE) {
-                        if (count === index) {
-                            positions.push({ x: newX, y: newY });
-                            return { positions, outOfBounds };
-                        }
-                        count++;
-                    } else {
-                        outOfBounds = true;
+                        positions.push({ x: newX, y: newY });
                     }
                 }
             }
         }
-        
-        return { positions: [], outOfBounds: true };
+
+        if (index === undefined) {
+            return { positions, outOfBounds: false };
+        }
+
+        return {
+            positions: index < positions.length ? [positions[index]] : [],
+            outOfBounds: index >= positions.length
+        };
     },
 
     parallelLines: ({ startPos, size }, index) => {
-        if (index >= size * 4) {  // 2 lines * 2 thickness * size length
-            return { positions: [], outOfBounds: true };
+        const positions = [];
+        
+        for (let i = 0; i < size; i++) {
+            // First line
+            const x1 = startPos.x + i;
+            const y1 = startPos.y;
+            if (x1 >= 0 && x1 < MAP_SIZE && y1 >= 0 && y1 < MAP_SIZE) {
+                positions.push({ x: x1, y: y1 });
+            }
+            const y2 = startPos.y + 1;
+            if (x1 >= 0 && x1 < MAP_SIZE && y2 >= 0 && y2 < MAP_SIZE) {
+                positions.push({ x: x1, y: y2 });
+            }
+
+            // Second line (with gap)
+            const y3 = startPos.y + 3;
+            if (x1 >= 0 && x1 < MAP_SIZE && y3 >= 0 && y3 < MAP_SIZE) {
+                positions.push({ x: x1, y: y3 });
+            }
+            const y4 = startPos.y + 4;
+            if (x1 >= 0 && x1 < MAP_SIZE && y4 >= 0 && y4 < MAP_SIZE) {
+                positions.push({ x: x1, y: y4 });
+            }
         }
 
-        const lineIndex = Math.floor(index / size);  // 0-3 for the four parallel rows
-        const positionInLine = index % size;
+        if (index === undefined) {
+            return { positions, outOfBounds: false };
+        }
 
-        const x = startPos.x + positionInLine;
-        const y = startPos.y + (lineIndex < 2 ? lineIndex : lineIndex + 1);  // Add 1 space gap between lines
-        
-        const outOfBounds = x < 0 || x >= MAP_SIZE || y < 0 || y >= MAP_SIZE;
-        
         return {
-            positions: outOfBounds ? [] : [{ x, y }],
-            outOfBounds
+            positions: index < positions.length ? [positions[index]] : [],
+            outOfBounds: index >= positions.length
+        };
+    },
+
+    patternPlacer: ({ pattern, patternArgs, terrain, targetPos }, index) => {
+        // Calculate distances from target to all positions
+        const positions = [];
+        for (let y = 0; y < MAP_SIZE; y++) {
+            for (let x = 0; x < MAP_SIZE; x++) {
+                const distance = Math.max(Math.abs(x - targetPos.x), Math.abs(y - targetPos.y));
+                positions.push({ x, y, distance });
+            }
+        }
+        
+        // Sort positions by distance from target
+        positions.sort((a, b) => a.distance - b.distance);
+        
+        // Find all valid positions
+        const validPositions = [];
+        let currIndex = 0;
+        for (const pos of positions) {
+            // Get all positions for this pattern instance
+            const result = pattern({ 
+                ...patternArgs, 
+                startPos: pos,
+                steps: -1
+            });
+            
+            if (isValidPosition(result.positions, terrain)) {
+                if (index === undefined || currIndex === index) {
+                    validPositions.push(...result.positions);
+                    break;
+                }
+                currIndex++;
+            }
+        }
+
+        return {
+            positions: validPositions,
+            outOfBounds: false
         };
     }
 };

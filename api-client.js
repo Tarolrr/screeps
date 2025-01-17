@@ -27,7 +27,7 @@ async function makeApiCall(path, ...args) {
 async function main() {
     try {
         // Example: Get room overview
-        const result = await makeApiCall('game.roomTerrain', 'W1N1', 'shard3', '1');
+        const result = await makeApiCall('game.roomTerrain', 'W1N1', null, 'shard3');
         console.log('API Response:', result);
     } catch (error) {
         console.error('Error:', error);
