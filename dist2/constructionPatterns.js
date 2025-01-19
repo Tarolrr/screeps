@@ -32,89 +32,159 @@ function isValidPosition(positions, terrain) {
     return true;
 }
 
+function calculateCenter(positions) {
+    if (positions.length === 0) return { x: 0, y: 0 };
+    
+    const sum = positions.reduce((acc, pos) => {
+        acc.x += pos.x;
+        acc.y += pos.y;
+        return acc;
+    }, { x: 0, y: 0 });
+    
+    return {
+        x: Math.round(sum.x / positions.length),
+        y: Math.round(sum.y / positions.length)
+    };
+}
+
+function offsetPositions(positions, targetPos) {
+    const center = calculateCenter(positions);
+    const offset = {
+        x: targetPos.x - center.x,
+        y: targetPos.y - center.y
+    };
+    
+    return positions.map(pos => ({
+        x: pos.x + offset.x,
+        y: pos.y + offset.y
+    }));
+}
+
 const patterns = {
     single: ({ startPos }, index) => {
-        if (index === undefined) {
-            return {
-                positions: [startPos],
-                outOfBounds: false
-            };
-        }
-        
         if (index > 0) {
             return { positions: [], outOfBounds: true };
         }
-        
         return {
             positions: [startPos],
-            outOfBounds: true
+            outOfBounds: false
         };
     },
 
     checkboard: ({ startPos, size = 3, centered = false }, index) => {
         const positions = [];
+        let count = 0;
+        const radius = Math.floor(size / 2);
         
-        if (centered) {
-            const radius = Math.floor(size / 2);
-            
-            for (let x = -radius; x <= radius; x++) {
-                for (let y = -radius; y <= radius; y++) {
-                    if ((x + y) % 2 === 0) {
-                        const newX = startPos.x + x;
-                        const newY = startPos.y + y;
-                        
-                        if (newX >= 0 && newX < MAP_SIZE && newY >= 0 && newY < MAP_SIZE) {
-                            positions.push({ x: newX, y: newY });
-                        }
+        // Generate positions around (0,0)
+        for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                if ((dx + dy) % 2 === 0) {
+                    if (index === undefined || count === index) {
+                        positions.push({ x: dx, y: dy });
                     }
-                }
-            }
-        } else {
-            for (let x = 0; x < size; x++) {
-                for (let y = 0; y < size; y++) {
-                    if ((x + y) % 2 === 0) {
-                        const newX = startPos.x + x;
-                        const newY = startPos.y + y;
-                        
-                        if (newX >= 0 && newX < MAP_SIZE && newY >= 0 && newY < MAP_SIZE) {
-                            positions.push({ x: newX, y: newY });
-                        }
-                    }
+                    count++;
                 }
             }
         }
-
-        if (index === undefined) {
-            return { positions, outOfBounds: false };
-        }
-
+        
+        // Offset to target position
+        const finalPositions = offsetPositions(positions, startPos);
+        
         return {
-            positions: index < positions.length ? [positions[index]] : [],
-            outOfBounds: index >= positions.length
+            positions: finalPositions,
+            outOfBounds: count <= index
         };
     },
 
     line: ({ startPos, size, direction = RIGHT }, index) => {
         const positions = [];
-        const dx = direction === RIGHT ? 1 : (direction === LEFT ? -1 : 0);
-        const dy = direction === BOTTOM ? 1 : (direction === TOP ? -1 : 0);
         
+        // Generate positions around (0,0)
         for (let i = 0; i < size; i++) {
-            const x = startPos.x + (dx * i);
-            const y = startPos.y + (dy * i);
-            
-            if (x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE) {
-                positions.push({ x, y });
+            if (index === undefined || i === index) {
+                positions.push({ x: i - Math.floor(size/2), y: 0 });
             }
         }
-
-        if (index === undefined) {
-            return { positions, outOfBounds: false };
-        }
-
+        
+        // Offset to target position
+        const finalPositions = offsetPositions(positions, startPos);
+        
         return {
-            positions: index < positions.length ? [positions[index]] : [],
-            outOfBounds: index >= positions.length
+            positions: finalPositions,
+            outOfBounds: size <= index
+        };
+    },
+
+    ring: ({ startPos, radius }, index) => {
+        const positions = [];
+        let count = 0;
+        radius = Math.floor(radius / 2);
+        
+        // Generate positions around (0,0)
+        for (let dx = -radius; dx <= radius; dx++) {
+            for (let dy = -radius; dy <= radius; dy++) {
+                if (Math.abs(dx) === radius || Math.abs(dy) === radius) {
+                    if (index === undefined || count === index) {
+                        positions.push({ x: dx, y: dy });
+                    }
+                    count++;
+                }
+            }
+        }
+        
+        // Offset to target position
+        const finalPositions = offsetPositions(positions, startPos);
+        
+        return {
+            positions: finalPositions,
+            outOfBounds: count <= index
+        };
+    },
+
+    rectangle: ({ startPos, width, height, filled = false }, index) => {
+        const positions = [];
+        
+        // Generate positions around (0,0)
+        for (let i = 0; i < width * height; i++) {
+            if (index === undefined || i === index) {
+                const row = Math.floor(i / width) - Math.floor(height/2);
+                const col = (i % width) - Math.floor(width/2);
+                positions.push({ x: col, y: row });
+            }
+        }
+        
+        // Offset to target position
+        const finalPositions = offsetPositions(positions, startPos);
+        
+        return {
+            positions: finalPositions,
+            outOfBounds: width * height <= index
+        };
+    },
+
+    parallelLines: ({ startPos, size }, index) => {
+        const positions = [];
+        const totalPositions = size * 4;  // 2 lines * 2 thickness * size length
+        
+        // Generate positions around (0,0)
+        for (let i = 0; i < totalPositions; i++) {
+            if (index === undefined || i === index) {
+                const lineIndex = Math.floor(i / size);  // 0-3 for the four parallel rows
+                const positionInLine = i % size - Math.floor(size/2);
+                positions.push({
+                    x: positionInLine,
+                    y: (lineIndex < 2 ? lineIndex : lineIndex + 1) - 2  // Add 1 space gap between lines, center vertically
+                });
+            }
+        }
+        
+        // Offset to target position
+        const finalPositions = offsetPositions(positions, startPos);
+        
+        return {
+            positions: finalPositions,
+            outOfBounds: totalPositions <= index
         };
     },
 
@@ -235,108 +305,25 @@ const patterns = {
         };
     },
 
-    ring: ({ startPos, radius }, index) => {
-        const positions = [];
-        
-        for (let dx = -radius; dx <= radius; dx++) {
-            for (let dy = -radius; dy <= radius; dy++) {
-                if (Math.abs(dx) === radius || Math.abs(dy) === radius) {
-                    const x = startPos.x + dx;
-                    const y = startPos.y + dy;
-                    if (x >= 0 && x < MAP_SIZE && y >= 0 && y < MAP_SIZE) {
-                        positions.push({ x, y });
-                    }
-                }
-            }
-        }
-
-        if (index === undefined) {
-            return { positions, outOfBounds: false };
-        }
-
-        return {
-            positions: index < positions.length ? [positions[index]] : [],
-            outOfBounds: index >= positions.length
-        };
-    },
-
-    rectangle: ({ startPos, width, height, filled = false }, index) => {
-        const positions = [];
-        
-        for (let x = 0; x < width; x++) {
-            for (let y = 0; y < height; y++) {
-                if (filled || x === 0 || x === width - 1 || y === 0 || y === height - 1) {
-                    const newX = startPos.x + x;
-                    const newY = startPos.y + y;
-                    if (newX >= 0 && newX < MAP_SIZE && newY >= 0 && newY < MAP_SIZE) {
-                        positions.push({ x: newX, y: newY });
-                    }
-                }
-            }
-        }
-
-        if (index === undefined) {
-            return { positions, outOfBounds: false };
-        }
-
-        return {
-            positions: index < positions.length ? [positions[index]] : [],
-            outOfBounds: index >= positions.length
-        };
-    },
-
-    parallelLines: ({ startPos, size }, index) => {
-        const positions = [];
-        
-        for (let i = 0; i < size; i++) {
-            // First line
-            const x1 = startPos.x + i;
-            const y1 = startPos.y;
-            if (x1 >= 0 && x1 < MAP_SIZE && y1 >= 0 && y1 < MAP_SIZE) {
-                positions.push({ x: x1, y: y1 });
-            }
-            const y2 = startPos.y + 1;
-            if (x1 >= 0 && x1 < MAP_SIZE && y2 >= 0 && y2 < MAP_SIZE) {
-                positions.push({ x: x1, y: y2 });
-            }
-
-            // Second line (with gap)
-            const y3 = startPos.y + 3;
-            if (x1 >= 0 && x1 < MAP_SIZE && y3 >= 0 && y3 < MAP_SIZE) {
-                positions.push({ x: x1, y: y3 });
-            }
-            const y4 = startPos.y + 4;
-            if (x1 >= 0 && x1 < MAP_SIZE && y4 >= 0 && y4 < MAP_SIZE) {
-                positions.push({ x: x1, y: y4 });
-            }
-        }
-
-        if (index === undefined) {
-            return { positions, outOfBounds: false };
-        }
-
-        return {
-            positions: index < positions.length ? [positions[index]] : [],
-            outOfBounds: index >= positions.length
-        };
-    },
-
     patternPlacer: ({ pattern, patternArgs, terrain, targetPos }, index) => {
         // Calculate distances from target to all positions
         const positions = [];
         for (let y = 0; y < MAP_SIZE; y++) {
             for (let x = 0; x < MAP_SIZE; x++) {
-                const distance = Math.max(Math.abs(x - targetPos.x), Math.abs(y - targetPos.y));
-                positions.push({ x, y, distance });
+                const dx = x - targetPos.x;
+                const dy = y - targetPos.y;
+                positions.push({
+                    x, y,
+                    distance: Math.abs(dx) + Math.abs(dy)  // Manhattan distance
+                });
             }
         }
-        
-        // Sort positions by distance from target
         positions.sort((a, b) => a.distance - b.distance);
         
         // Find all valid positions
         const validPositions = [];
         let currIndex = 0;
+        
         for (const pos of positions) {
             // Get all positions for this pattern instance
             const result = pattern({ 
@@ -347,6 +334,7 @@ const patterns = {
             
             if (isValidPosition(result.positions, terrain)) {
                 if (index === undefined || currIndex === index) {
+                    // Don't try to center the pattern, use the positions as they are
                     validPositions.push(...result.positions);
                     break;
                 }
@@ -358,6 +346,14 @@ const patterns = {
             positions: validPositions,
             outOfBounds: false
         };
+    },
+    // WIP - allow to define relative positions and other connections between patterns
+    // example usecase: parallel rows of extensions with roads between and outside
+    complexPattern: (patterns_, index) => {
+        for (let i = 0; i < patterns_.length; i++) {
+            const pattern = patterns[patterns_[i].name];
+            const result = pattern(patterns_[i].params, undefined);
+        }
     }
 };
 

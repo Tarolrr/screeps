@@ -4,8 +4,19 @@ const resourceManager = require('./resourceManager');
 const logger = require('./logger');
 
 class BuildController {
+    NUM_EXTENSION_ORDERS = 3;
+    EXTENSION_PRIORITY = 1000;
+    EXTENSION_OFFSET = 10;
     initialize() {
         this.applyResources();
+    }
+
+    placeExtensionPatterns(roomName, patterns) {
+        const room = Game.rooms[roomName];
+            // single order supplies 20 extensions
+            for (let i = 0; i < this.NUM_EXTENSION_ORDERS; i++) {
+                this.queueStructurePattern(roomName, STRUCTURE_EXTENSION, pattern, this.EXTENSION_PRIORITY - i * this.EXTENSION_OFFSET, `extensions_${roomName}_${i}`);
+            }
     }
 
     applyResources() {
@@ -15,7 +26,7 @@ class BuildController {
             if (!spawn) continue;
 
             // Ensure basic structures are queued
-            this.ensureBasicStructures(room);
+            this.ensureBascStructures(room);
 
             resourceManager.applyResource('creepOrder', {
                 role: 'builder',

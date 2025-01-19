@@ -1,5 +1,6 @@
 const Resource = require('./resources.Resource');
 const patterns = require('./constructionPatterns');
+const resourceManager = require('./resourceManager');
 const logger = require('./logger');
 
 class ConstructionOrder extends Resource {
@@ -8,7 +9,8 @@ class ConstructionOrder extends Resource {
             positions: 'object',  // array of positions
             ownedStructureIds: 'object',  // array of structure IDs we own
             hasWrongTypeStructures: 'boolean',
-            hasWrongPositionStructures: 'boolean'
+            hasWrongPositionStructures: 'boolean',
+            enabled: 'boolean'
         });
     }
 
@@ -33,12 +35,12 @@ class ConstructionOrder extends Resource {
         this.count = data.count || 0;
         
         // Set state fields
-        const room = Game.rooms[this.roomName];
         if (Array.isArray(data.positions) && data.positions.length > 0) {
             this.positions = data.positions;
         } else {
-            this.positions = this.generatePositions(room);
+            this.positions = this.generatePositions();
         }
+        this.enabled = data.enabled || true;
         
         this.ownedStructureIds = data.ownedStructureIds || [];
         this._previousType = this.structureType;
@@ -49,8 +51,7 @@ class ConstructionOrder extends Resource {
     onSpecUpdate() {
         this.hasWrongPositionStructures = true;
         const oldPositions = this.positions;
-        const room = Game.rooms[this.roomName];
-        this.positions = this.generatePositions(room);
+        this.positions = this.generatePositions();
         
         if (this.structureType === this._previousType) {
             this.claimStructures(oldPositions);
@@ -64,11 +65,11 @@ class ConstructionOrder extends Resource {
         this._previousType = this.structureType;
     }
 
-    generatePositions(room) {
-        if (!room) {
-            logger.debug('Room not found, returning empty array');
-            return [];
-        }
+    generatePositions() {
+        const room = Game.rooms[this.roomName];
+
+        // const constructionOrders = resourceManager.getResourcesOfType('constructionOrder')
+        //     .filter(order => order.roomName === this.roomName && order.structureType
 
         const patternFunc = patterns[this.pattern.type];
         if (!patternFunc) {
@@ -274,7 +275,8 @@ class ConstructionOrder extends Resource {
             positions: this.positions,
             ownedStructureIds: this.ownedStructureIds,
             hasWrongTypeStructures: this.hasWrongTypeStructures,
-            hasWrongPositionStructures: this.hasWrongPositionStructures
+            hasWrongPositionStructures: this.hasWrongPositionStructures,
+            enabled: this.enabled
         };
     }
 }

@@ -298,6 +298,25 @@
         document.getElementById('targetY').value = patternPosition.y;
         document.getElementById('targetX').addEventListener('change', updatePatternPosition);
         document.getElementById('targetY').addEventListener('change', updatePatternPosition);
+
+        // Add keyboard controls
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowLeft':
+                    movePattern(-1, 0);
+                    break;
+                case 'ArrowRight':
+                    movePattern(1, 0);
+                    break;
+                case 'ArrowUp':
+                    movePattern(0, -1);
+                    break;
+                case 'ArrowDown':
+                    movePattern(0, 1);
+                    break;
+            }
+        });
+
         redraw();
     </script>
 </body>
