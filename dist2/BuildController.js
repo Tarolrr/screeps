@@ -11,8 +11,7 @@ class BuildController {
         this.applyResources();
     }
 
-    placeExtensionPatterns(roomName, patterns) {
-        const room = Game.rooms[roomName];
+    placeExtensionPatterns(roomName, pattern) {
             // single order supplies 20 extensions
             for (let i = 0; i < this.NUM_EXTENSION_ORDERS; i++) {
                 this.queueStructurePattern(roomName, STRUCTURE_EXTENSION, pattern, this.EXTENSION_PRIORITY - i * this.EXTENSION_OFFSET, `extensions_${roomName}_${i}`);
@@ -26,7 +25,7 @@ class BuildController {
             if (!spawn) continue;
 
             // Ensure basic structures are queued
-            this.ensureBascStructures(room);
+            this.ensureBasicStructures(room);
 
             resourceManager.applyResource('creepOrder', {
                 role: 'builder',
@@ -109,22 +108,22 @@ class BuildController {
         const spawn = room.find(FIND_MY_SPAWNS)[0];
         if (!spawn) return;
 
-        // Queue extensions in a centered checkboard pattern
-        const maxExtensions = CONTROLLER_STRUCTURES['extension'][room.controller.level];
-        this.queueStructurePattern(
+        this.placeExtensionPatterns(
             room.name,
-            STRUCTURE_EXTENSION,
             {
-                type: 'checkboard',
+                type: 'patternPlacer',
                 params: {
-                    startPos: spawn.pos,
-                    size: 7,
-                    centered: true
+                    pattern: 'parallelLines',
+                    patternArgs: {
+                        size: 7,
+                    },
+                    terrain: room.getTerrain(),
+                    targetPos: {
+                        x: spawn.pos.x,
+                        y: spawn.pos.y
+                    },
                 }
-            },
-            90, // high priority
-            `extensions_${room.name}`,
-            maxExtensions
+            }
         );
 
         // Queue roads from sources to spawn

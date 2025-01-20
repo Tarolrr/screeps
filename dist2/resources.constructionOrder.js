@@ -40,7 +40,6 @@ class ConstructionOrder extends Resource {
         } else {
             this.positions = this.generatePositions();
         }
-        this.enabled = data.enabled || true;
         
         this.ownedStructureIds = data.ownedStructureIds || [];
         this._previousType = this.structureType;
@@ -276,7 +275,6 @@ class ConstructionOrder extends Resource {
             ownedStructureIds: this.ownedStructureIds,
             hasWrongTypeStructures: this.hasWrongTypeStructures,
             hasWrongPositionStructures: this.hasWrongPositionStructures,
-            enabled: this.enabled
         };
     }
 }
