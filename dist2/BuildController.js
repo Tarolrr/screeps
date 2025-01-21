@@ -4,9 +4,6 @@ const resourceManager = require('./resourceManager');
 const logger = require('./logger');
 
 class BuildController {
-    NUM_EXTENSION_ORDERS = 3;
-    EXTENSION_PRIORITY = 1000;
-    EXTENSION_OFFSET = 10;
     initialize() {
         this.applyResources();
     }
@@ -177,17 +174,20 @@ class BuildController {
     }
 
     reconcile() {
+
         if (Game.time % 100 !== 0) return;
+
         // Only process rooms with spawns
         for (const room of Object.values(Game.rooms)) {
             const spawn = room.find(FIND_MY_SPAWNS)[0];
+
             if (!spawn) continue;
 
             // Handle construction orders
             const constructionOrders = resourceManager.getResourcesOfType('constructionOrder')
             .filter(order => order.roomName === room.name)
             .sort((a, b) => (b.priority || 0) - (a.priority || 0));
-
+            
             for (const order of constructionOrders) {
                 // manage structures
                 order.validateOwnedStructures();
@@ -228,5 +228,9 @@ class BuildController {
         }
     }
 }
+
+BuildController.prototype.NUM_EXTENSION_ORDERS = 3;
+BuildController.prototype.EXTENSION_PRIORITY = 1000;
+BuildController.prototype.EXTENSION_OFFSET = 10;
 
 module.exports = new BuildController();

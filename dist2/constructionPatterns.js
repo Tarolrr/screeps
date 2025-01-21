@@ -2,66 +2,104 @@ const logger = require('./logger');
 
 const MAP_SIZE = 50;
 
-// Helper function to check if a pattern's bounding box touches walls
-function isValidPosition(positions, terrain) {
-    if (!positions.length) return false;
-    
-    let minX = MAP_SIZE, minY = MAP_SIZE, maxX = 0, maxY = 0;
-    positions.forEach(pos => {
-        minX = Math.min(minX, pos.x);
-        minY = Math.min(minY, pos.y);
-        maxX = Math.max(maxX, pos.x);
-        maxY = Math.max(maxY, pos.y);
-    });
-
-    // Check map bounds
-    if (minX < 0 || minY < 0 || maxX >= MAP_SIZE || maxY >= MAP_SIZE) {
-        return false;
+// Pattern Registry - Singleton
+class PatternRegistry {
+    constructor() {
+        this._patterns = new Map();
     }
 
-    // Check walls
-    for (let y = minY; y <= maxY; y++) {
-        for (let x = minX; x <= maxX; x++) {
-            const terrainType = terrain[y * MAP_SIZE + x];
-            if (terrainType === '1' || terrainType === '3') {  // Wall
-                return false;
+    register(pattern) {
+        this._patterns.set(pattern.name, pattern);
+    }
+
+    get(patternName) {
+        return this._patterns.get(patternName);
+    }
+
+    getPatterns() {
+        return Array.from(this._patterns).reduce((obj, [key, value]) => {
+            obj[key] = value;
+            return obj;
+        }, {});
+    }
+}
+
+const registry = new PatternRegistry();
+
+class ConstructionPattern {
+    constructor(name) {
+        this.name = name;
+    }
+
+    isValidPosition(positions, terrain) {
+        if (!positions.length) return false;
+        
+        let minX = MAP_SIZE, minY = MAP_SIZE, maxX = 0, maxY = 0;
+        positions.forEach(pos => {
+            minX = Math.min(minX, pos.x);
+            minY = Math.min(minY, pos.y);
+            maxX = Math.max(maxX, pos.x);
+            maxY = Math.max(maxY, pos.y);
+        });
+
+        // Check map bounds
+        if (minX < 0 || minY < 0 || maxX >= MAP_SIZE || maxY >= MAP_SIZE) {
+            return false;
+        }
+
+        // Check walls
+        for (let y = minY; y <= maxY; y++) {
+            for (let x = minX; x <= maxX; x++) {
+                const terrainType = terrain[y * MAP_SIZE + x];
+                if (terrainType === '1' || terrainType === '3') {  // Wall
+                    return false;
+                }
             }
         }
+
+        return true;
     }
 
-    return true;
+    calculateCenter(positions) {
+        if (positions.length === 0) return { x: 0, y: 0 };
+        
+        const sum = positions.reduce((acc, pos) => {
+            acc.x += pos.x;
+            acc.y += pos.y;
+            return acc;
+        }, { x: 0, y: 0 });
+        
+        return {
+            x: Math.round(sum.x / positions.length),
+            y: Math.round(sum.y / positions.length)
+        };
+    }
+
+    offsetPositions(positions, targetPos) {
+        const center = this.calculateCenter(positions);
+        const offset = {
+            x: targetPos.x - center.x,
+            y: targetPos.y - center.y
+        };
+        
+        return positions.map(pos => ({
+            x: pos.x + offset.x,
+            y: pos.y + offset.y
+        }));
+    }
+
+    // Abstract method to be implemented by child classes
+    getPositions(args, index) {
+        throw new Error('getPositions must be implemented by child class');
+    }
 }
 
-function calculateCenter(positions) {
-    if (positions.length === 0) return { x: 0, y: 0 };
-    
-    const sum = positions.reduce((acc, pos) => {
-        acc.x += pos.x;
-        acc.y += pos.y;
-        return acc;
-    }, { x: 0, y: 0 });
-    
-    return {
-        x: Math.round(sum.x / positions.length),
-        y: Math.round(sum.y / positions.length)
-    };
-}
+class SinglePattern extends ConstructionPattern {
+    constructor() {
+        super('single');
+    }
 
-function offsetPositions(positions, targetPos) {
-    const center = calculateCenter(positions);
-    const offset = {
-        x: targetPos.x - center.x,
-        y: targetPos.y - center.y
-    };
-    
-    return positions.map(pos => ({
-        x: pos.x + offset.x,
-        y: pos.y + offset.y
-    }));
-}
-
-const patterns = {
-    single: ({ startPos }, index) => {
+    getPositions({ startPos }, index) {
         if (index > 0) {
             return { positions: [], outOfBounds: true };
         }
@@ -69,14 +107,19 @@ const patterns = {
             positions: [startPos],
             outOfBounds: false
         };
-    },
+    }
+}
 
-    checkboard: ({ startPos, size = 3, centered = false }, index) => {
+class CheckboardPattern extends ConstructionPattern {
+    constructor() {
+        super('checkboard');
+    }
+
+    getPositions({ startPos, size = 3 }, index) {
         const positions = [];
         let count = 0;
         const radius = Math.floor(size / 2);
         
-        // Generate positions around (0,0)
         for (let dx = -radius; dx <= radius; dx++) {
             for (let dy = -radius; dy <= radius; dy++) {
                 if ((dx + dy) % 2 === 0) {
@@ -88,40 +131,48 @@ const patterns = {
             }
         }
         
-        // Offset to target position
-        const finalPositions = offsetPositions(positions, startPos);
+        const finalPositions = this.offsetPositions(positions, startPos);
         
         return {
             positions: finalPositions,
             outOfBounds: count <= index
         };
-    },
+    }
+}
 
-    line: ({ startPos, size, direction = RIGHT }, index) => {
+class LinePattern extends ConstructionPattern {
+    constructor() {
+        super('line');
+    }
+
+    getPositions({ startPos, size, direction = RIGHT }, index) {
         const positions = [];
         
-        // Generate positions around (0,0)
         for (let i = 0; i < size; i++) {
             if (index === undefined || i === index) {
                 positions.push({ x: i - Math.floor(size/2), y: 0 });
             }
         }
         
-        // Offset to target position
-        const finalPositions = offsetPositions(positions, startPos);
+        const finalPositions = this.offsetPositions(positions, startPos);
         
         return {
             positions: finalPositions,
             outOfBounds: size <= index
         };
-    },
+    }
+}
 
-    ring: ({ startPos, radius }, index) => {
+class RingPattern extends ConstructionPattern {
+    constructor() {
+        super('ring');
+    }
+
+    getPositions({ startPos, radius }, index) {
         const positions = [];
         let count = 0;
         radius = Math.floor(radius / 2);
         
-        // Generate positions around (0,0)
         for (let dx = -radius; dx <= radius; dx++) {
             for (let dy = -radius; dy <= radius; dy++) {
                 if (Math.abs(dx) === radius || Math.abs(dy) === radius) {
@@ -133,19 +184,23 @@ const patterns = {
             }
         }
         
-        // Offset to target position
-        const finalPositions = offsetPositions(positions, startPos);
+        const finalPositions = this.offsetPositions(positions, startPos);
         
         return {
             positions: finalPositions,
             outOfBounds: count <= index
         };
-    },
+    }
+}
 
-    rectangle: ({ startPos, width, height, filled = false }, index) => {
+class RectanglePattern extends ConstructionPattern {
+    constructor() {
+        super('rectangle');
+    }
+
+    getPositions({ startPos, width, height, filled = false }, index) {
         const positions = [];
         
-        // Generate positions around (0,0)
         for (let i = 0; i < width * height; i++) {
             if (index === undefined || i === index) {
                 const row = Math.floor(i / width) - Math.floor(height/2);
@@ -154,20 +209,24 @@ const patterns = {
             }
         }
         
-        // Offset to target position
-        const finalPositions = offsetPositions(positions, startPos);
+        const finalPositions = this.offsetPositions(positions, startPos);
         
         return {
             positions: finalPositions,
             outOfBounds: width * height <= index
         };
-    },
+    }
+}
 
-    parallelLines: ({ startPos, size }, index) => {
+class ParallelLinesPattern extends ConstructionPattern {
+    constructor() {
+        super('parallelLines');
+    }
+
+    getPositions({ startPos, size }, index) {
         const positions = [];
         const totalPositions = size * 4;  // 2 lines * 2 thickness * size length
         
-        // Generate positions around (0,0)
         for (let i = 0; i < totalPositions; i++) {
             if (index === undefined || i === index) {
                 const lineIndex = Math.floor(i / size);  // 0-3 for the four parallel rows
@@ -179,22 +238,24 @@ const patterns = {
             }
         }
         
-        // Offset to target position
-        const finalPositions = offsetPositions(positions, startPos);
+        const finalPositions = this.offsetPositions(positions, startPos);
         
         return {
             positions: finalPositions,
             outOfBounds: totalPositions <= index
         };
-    },
+    }
+}
 
-    path: ({ roomName, fromPos, toPos, width, ...pathOpts }, index) => {
+class PathPattern extends ConstructionPattern {
+    constructor() {
+        super('path');
+    }
 
-        // logger.debug(`Path: Generating for room ${roomName}, index ${index}, from: (${fromPos.x}, ${fromPos.y}), to: (${toPos.x}, ${toPos.y})`);
+    getPositions({ roomName, fromPos, toPos, width, ...pathOpts }, index) {
         const room = Game.rooms[roomName];
         const terrain = room.getTerrain();
         if (!room) {
-            // logger.debug(`Path: Room ${roomName} not found`);
             return { positions: [], outOfBounds: true };
         }
         const fromRoomPos = new RoomPosition(fromPos.x, fromPos.y, roomName);
@@ -218,12 +279,10 @@ const patterns = {
                 return costMatrix;
             }
         });
-        // logger.debug(`Path: Found path with ${path.length} steps in ${roomName}`);
         if (path.length === 0) {
             return { positions: [], outOfBounds: true };
         }
 
-        // Calculate path position and perpendicular offset
         const pathIndex = index % path.length;
         const offsetIndex = Math.floor(index / path.length);
 
@@ -233,7 +292,6 @@ const patterns = {
 
         const pathPos = path[pathIndex];
         
-        // For first position in width, return the original path position
         if (offsetIndex === 0) {
             return {
                 positions: [{ x: pathPos.x, y: pathPos.y }],
@@ -241,42 +299,33 @@ const patterns = {
             };
         }
 
-        // Calculate direction vectors for offset
         let dx = 0, dy = 0;
         if (pathIndex < path.length - 1) {
-            // Get direction to next point
             dx = path[pathIndex + 1].x - pathPos.x;
             dy = path[pathIndex + 1].y - pathPos.y;
         } else if (pathIndex > 0) {
-            // Get direction from previous point
             dx = pathPos.x - path[pathIndex - 1].x;
             dy = pathPos.y - path[pathIndex - 1].y;
         }
 
-        // Calculate offset vectors
         let offsetVectors = [];
         if (dx && dy) {
-            // Diagonal movement, try shifting by one direction
             offsetVectors = [
-                { x: dx, y: 0 },  // Shift horizontally
-                { x: 0, y: dy }   // Shift vertically
+                { x: dx, y: 0 },  
+                { x: 0, y: dy }   
             ];
         } else if (dx) {
-            // Horizontal movement
             offsetVectors = [
-                { x: 0, y: 1 },     // Up
-                { x: 0, y: -1 }     // Down
+                { x: 0, y: 1 },     
+                { x: 0, y: -1 }     
             ];
         } else if (dy) {
-            // Vertical movement
             offsetVectors = [
-                { x: 1, y: 0 },     // Right
-                { x: -1, y: 0 }     // Left
+                { x: 1, y: 0 },     
+                { x: -1, y: 0 }     
             ];
         }
 
-        // Try to find valid position with current offset
-        // Alternate between positive and negative offsets
         const currentOffset = Math.ceil(offsetIndex / 2);
         const isPositiveOffset = offsetIndex % 2 === 1;
 
@@ -284,29 +333,36 @@ const patterns = {
             const testX = pathPos.x + (isPositiveOffset ? vector.x : -vector.x) * currentOffset;
             const testY = pathPos.y + (isPositiveOffset ? vector.y : -vector.y) * currentOffset;
 
-            // Check bounds
             if (testX < 0 || testX >= MAP_SIZE || testY < 0 || testY >= MAP_SIZE) {
                 continue;
             }
 
-            // Check terrain
             if (terrain.get(testX, testY) !== TERRAIN_MASK_WALL) {
                 return {
                     positions: [{ x: testX, y: testY }],
                     outOfBounds: false
                 };
-        }
+            }
         }
 
-        // If no valid offset position found, return the original path position
         return {
             positions: [{ x: pathPos.x, y: pathPos.y }],
             outOfBounds: false
         };
-    },
+    }
+}
 
-    patternPlacer: ({ pattern, patternArgs, terrain, targetPos }, index) => {
-        // Calculate distances from target to all positions
+class PatternPlacerPattern extends ConstructionPattern {
+    constructor() {
+        super('patternPlacer');
+    }
+
+    getPositions({ pattern, patternArgs, terrain, targetPos }, index) {
+        const patternInstance = registry.get(pattern);
+        if (!patternInstance) {
+            throw new Error(`Unknown pattern: ${pattern}`);
+        }
+
         const positions = [];
         for (let y = 0; y < MAP_SIZE; y++) {
             for (let x = 0; x < MAP_SIZE; x++) {
@@ -314,47 +370,46 @@ const patterns = {
                 const dy = y - targetPos.y;
                 positions.push({
                     x, y,
-                    distance: Math.abs(dx) + Math.abs(dy)  // Manhattan distance
+                    distance: Math.abs(dx) + Math.abs(dy)  
                 });
             }
         }
         positions.sort((a, b) => a.distance - b.distance);
         
-        // Find all valid positions
-        const validPositions = [];
-        let currIndex = 0;
-        
+        // Try each position until we find a valid one for the current index
         for (const pos of positions) {
-            // Get all positions for this pattern instance
-            const result = pattern({ 
+            const result = patternInstance.getPositions({ 
                 ...patternArgs, 
-                startPos: pos,
-                steps: -1
-            });
-            
-            if (isValidPosition(result.positions, terrain)) {
-                if (index === undefined || currIndex === index) {
-                    // Don't try to center the pattern, use the positions as they are
-                    validPositions.push(...result.positions);
-                    break;
-                }
-                currIndex++;
+                startPos: pos
+            }, index);
+
+            if (result.outOfBounds) {
+                continue;
+            }
+
+            if (this.isValidPosition(result.positions, terrain)) {
+                return {
+                    positions: result.positions,
+                    outOfBounds: false
+                };
             }
         }
 
         return {
-            positions: validPositions,
-            outOfBounds: false
+            positions: [],
+            outOfBounds: true
         };
-    },
-    // WIP - allow to define relative positions and other connections between patterns
-    // example usecase: parallel rows of extensions with roads between and outside
-    complexPattern: (patterns_, index) => {
-        for (let i = 0; i < patterns_.length; i++) {
-            const pattern = patterns[patterns_[i].name];
-            const result = pattern(patterns_[i].params, undefined);
-        }
     }
-};
+}
 
-module.exports = patterns;
+// Register all patterns
+registry.register(new SinglePattern());
+registry.register(new CheckboardPattern());
+registry.register(new LinePattern());
+registry.register(new RingPattern());
+registry.register(new RectanglePattern());
+registry.register(new ParallelLinesPattern());
+registry.register(new PathPattern());
+registry.register(new PatternPlacerPattern());
+
+module.exports = { patterns: registry.getPatterns() };

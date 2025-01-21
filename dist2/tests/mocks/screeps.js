@@ -174,6 +174,8 @@ class MockRoom {
                 return this._structures;
             case FIND_MY_CONSTRUCTION_SITES:
                 return this._constructionSites;
+            case FIND_MY_SPAWNS:
+                return this._structures.filter(s => s.structureType === 'spawn');
             default:
                 return [];
         }

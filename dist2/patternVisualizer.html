@@ -279,12 +279,10 @@
                 });
                 
                 const result = await response.json();
-                if (result.positions) {
-                    result.positions.forEach((pos, i) => {
-                        const hue = (i * 360 / result.positions.length) % 360;
-                        drawCell(pos.x, pos.y, `hsla(${hue}, 70%, 50%, 0.7)`);
-                    });
-                }
+                result.forEach((pos, i) => {
+                    const hue = (i * 360 / result.length) % 360;
+                    drawCell(pos.x, pos.y, `hsla(${hue}, 70%, 50%, 0.7)`);
+                });
             } catch (error) {
                 console.error('Failed to get pattern:', error);
             }

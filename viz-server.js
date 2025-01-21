@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const { getRoomTerrain } = require('./get-terrain');
 require('./dist2/mock-game');  // Initialize game objects
-const patterns = require('./dist2/constructionPatterns');
+const { patterns } = require('./dist2/constructionPatterns');
 const { setTerrain } = require('./dist2/mock-game');
 
 const app = express();
@@ -22,27 +22,52 @@ app.post('/pattern', (req, res) => {
     const { pattern, subPattern, position, size, steps, terrain } = req.body;
     
     try {
+        console.log(`Processing pattern request:
+    Pattern: ${pattern}
+    SubPattern: ${subPattern || 'none'}
+    Position: (${position.x}, ${position.y})
+    Size: ${size}
+    Steps: ${steps}`);
+
         // Set up mock room with terrain
         setTerrain('W1N1', terrain);
         
         let result;
         if (pattern === 'patternPlacer') {
-            result = patterns[pattern]({
-                pattern: patterns[subPattern],
-                patternArgs: { size },
+            console.log(`Using pattern placer with ${subPattern}`);
+            result = patterns[pattern].getPositions({
+                pattern: subPattern,
+                patternArgs: { 
+                    size,
+                    startPos: position  
+                },
                 terrain,
                 targetPos: position
-            }, steps);
+            }, undefined);
         } else {
-            result = patterns[pattern]({ 
+            console.log(`Using direct pattern ${pattern}`);
+            result = patterns[pattern].getPositions({ 
                 startPos: position,
                 size,
                 steps
-            });
+            }, undefined);  
         }
         
-        res.json(result);
+        const positions = result.positions || [];
+        console.log(`Generated ${positions.length} positions`);
+        res.json(positions);  
     } catch (error) {
+        console.error('Pattern generation error:', {
+            error: error.message,
+            stack: error.stack,
+            request: {
+                pattern,
+                subPattern,
+                position,
+                size,
+                steps
+            }
+        });
         res.status(500).json({ error: error.message });
     }
 });
