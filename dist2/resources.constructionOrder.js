@@ -134,12 +134,6 @@ class ConstructionOrder extends Resource {
 
     generateConstructionSitePositions(count) {
         
-        // Count includes both existing structures and potential sites
-        const targetCount = Math.min(
-            count || this.count,
-            this.count - this.ownedStructureIds.length
-        );
-        
         // Only generate sites for positions that don't have our owned structures and don't have construction sites
         const availablePositions = this.positions.filter(pos => {
             return !this.ownedStructureIds.some(id => {
@@ -153,7 +147,7 @@ class ConstructionOrder extends Resource {
         });
         
         return availablePositions
-            .slice(0, targetCount)
+            .slice(0, count)
             .map(pos => new RoomPosition(pos.x, pos.y, this.roomName));
     }
 

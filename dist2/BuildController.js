@@ -173,16 +173,13 @@ class BuildController {
         );
     }
 
-    reconcile() {
-
-        if (Game.time % 100 !== 0) return;
-
+    handleConstructionSites() {
         // Only process rooms with spawns
         for (const room of Object.values(Game.rooms)) {
             const spawn = room.find(FIND_MY_SPAWNS)[0];
 
             if (!spawn) continue;
-
+            // throw new Error('Not implemented');
             // Handle construction orders
             const constructionOrders = resourceManager.getResourcesOfType('constructionOrder')
             .filter(order => order.roomName === room.name)
@@ -190,6 +187,7 @@ class BuildController {
             
             for (const order of constructionOrders) {
                 // manage structures
+                logger.debug(`Processing construction order: ${order.id}`);
                 order.validateOwnedStructures();
                 order.claimStructures(order.positions);
                 order.removeExcessStructures();
@@ -223,9 +221,15 @@ class BuildController {
                     break;
                 }
             }
-
-            this.applyResources();
         }
+    }
+
+    reconcile() {
+
+        if (Game.time % 100 !== 0) return;
+
+        this.handleConstructionSites();
+        this.applyResources();
     }
 }
 

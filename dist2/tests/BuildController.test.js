@@ -28,6 +28,8 @@ const { MockRoom, MockStructure, MockConstructionSite } = require('./mocks/scree
 const resourceManager = require('../resourceManager');
 const ConstructionOrder = require('../resources.constructionOrder');
 const BuildController = require('../BuildController');
+const logger = require('../logger');
+logger.setLevel('debug');
 
 describe('BuildController', () => {
     let controller;
@@ -61,6 +63,7 @@ describe('BuildController', () => {
 
     describe('reconcile', () => {
         test('should process construction orders in priority order', () => {
+            logger.info('should process construction orders in priority order');
             // Create construction orders through resourceManager
             const order1Id = resourceManager.applyResource('constructionOrder', {
                 roomName: 'test',
@@ -76,7 +79,7 @@ describe('BuildController', () => {
                 priority: 2
             });
 
-            controller.reconcile();
+            controller.handleConstructionSites();
 
             // Verify construction sites were created in priority order
             const sites = testRoom._constructionSites;
@@ -86,6 +89,7 @@ describe('BuildController', () => {
         });
 
         test('should respect MAX_CONSTRUCTION_SITES limit', () => {
+            logger.info('should respect MAX_CONSTRUCTION_SITES limit');
             // Add existing construction sites
             for (let i = 0; i < 4; i++) {
                 testRoom._addConstructionSite(new MockConstructionSite(`site${i}`, { x: 10 + i, y: 10 }));
@@ -100,13 +104,14 @@ describe('BuildController', () => {
             });
 
             global.MAX_CONSTRUCTION_SITES = 5;
-            controller.reconcile();
+            controller.handleConstructionSites();
 
             // Should only create one more construction site
             expect(testRoom.find(FIND_MY_CONSTRUCTION_SITES).length).toBe(5);
         });
 
         test('should stop processing orders when MAX_CONSTRUCTION_SITES is reached', () => {
+            logger.info('should stop processing orders when MAX_CONSTRUCTION_SITES is reached');
             // Add existing construction sites up to limit
             for (let i = 0; i < 5; i++) {
                 testRoom._addConstructionSite(new MockConstructionSite(`site${i}`, { x: 10 + i, y: 10 }));
@@ -121,7 +126,7 @@ describe('BuildController', () => {
             });
 
             global.MAX_CONSTRUCTION_SITES = 5;
-            controller.reconcile();
+            controller.handleConstructionSites();
 
             // Should not create any more construction sites
             expect(testRoom.find(FIND_MY_CONSTRUCTION_SITES).length).toBe(5);
@@ -130,6 +135,7 @@ describe('BuildController', () => {
 
     describe('applyResources', () => {
         test('should create builder and mule creep orders', () => {
+            logger.info('should create builder and mule creep orders');
             // Create a construction site to trigger builder creation
             testRoom._addConstructionSite(new MockConstructionSite('site1', { x: 1, y: 1 }));
 
@@ -158,6 +164,7 @@ describe('BuildController', () => {
         });
 
         test('should not create orders for rooms without spawns', () => {
+            logger.info('should not create orders for rooms without spawns');
             // Create room without spawn
             const emptyRoom = new MockRoom('empty');
             global.Game.rooms.empty = emptyRoom;
