@@ -1,0 +1,482 @@
+{
+  "defense": {
+    "additional_hits": 59999,
+    "attack_damage_per_tick": 600,
+    "hold_ticks": 100,
+    "minimum_work_repair_energy": 600,
+    "rampart_initial_hits": 1,
+    "required_hits": 60000,
+    "shot_cost": 10,
+    "shots_without_supply": 100,
+    "tower_capacity": 1000,
+    "two_sources_ideal_income_per_tick": 20,
+    "two_towers_energy_per_tick": 20
+  },
+  "dist2_fleet": {
+    "1000": {
+      "bodies": {
+        "builder": {
+          "carry": 5,
+          "cost": 1000,
+          "move": 5,
+          "work": 5
+        },
+        "harvester": {
+          "carry": 1,
+          "cost": 700,
+          "move": 1,
+          "work": 6
+        },
+        "mule": {
+          "carry": 8,
+          "cost": 600,
+          "move": 4,
+          "work": 0
+        },
+        "upgrader": {
+          "carry": 1,
+          "cost": 1000,
+          "move": 1,
+          "work": 9
+        }
+      },
+      "fleet_cost": 8000,
+      "harvest_potential": 20,
+      "replacement_floor": 5.333333333333333,
+      "role_cycle_harvest_potential": 20,
+      "upgrade_work_potential": 18
+    },
+    "300": {
+      "bodies": {
+        "builder": {
+          "carry": 1,
+          "cost": 200,
+          "move": 1,
+          "work": 1
+        },
+        "harvester": {
+          "carry": 1,
+          "cost": 300,
+          "move": 1,
+          "work": 2
+        },
+        "mule": {
+          "carry": 4,
+          "cost": 300,
+          "move": 2,
+          "work": 0
+        },
+        "upgrader": {
+          "carry": 1,
+          "cost": 300,
+          "move": 1,
+          "work": 2
+        }
+      },
+      "fleet_cost": 3200,
+      "harvest_potential": 8,
+      "replacement_floor": 2.1333333333333333,
+      "role_cycle_harvest_potential": 7.428571428571429,
+      "upgrade_work_potential": 4
+    },
+    "550": {
+      "bodies": {
+        "builder": {
+          "carry": 2,
+          "cost": 400,
+          "move": 2,
+          "work": 2
+        },
+        "harvester": {
+          "carry": 1,
+          "cost": 500,
+          "move": 1,
+          "work": 4
+        },
+        "mule": {
+          "carry": 6,
+          "cost": 450,
+          "move": 3,
+          "work": 0
+        },
+        "upgrader": {
+          "carry": 1,
+          "cost": 500,
+          "move": 1,
+          "work": 4
+        }
+      },
+      "fleet_cost": 5100,
+      "harvest_potential": 16,
+      "replacement_floor": 3.4,
+      "role_cycle_harvest_potential": 14.0,
+      "upgrade_work_potential": 8
+    },
+    "800": {
+      "bodies": {
+        "builder": {
+          "carry": 4,
+          "cost": 800,
+          "move": 4,
+          "work": 4
+        },
+        "harvester": {
+          "carry": 1,
+          "cost": 700,
+          "move": 1,
+          "work": 6
+        },
+        "mule": {
+          "carry": 8,
+          "cost": 600,
+          "move": 4,
+          "work": 0
+        },
+        "upgrader": {
+          "carry": 1,
+          "cost": 800,
+          "move": 1,
+          "work": 7
+        }
+      },
+      "fleet_cost": 7400,
+      "harvest_potential": 20,
+      "replacement_floor": 4.933333333333334,
+      "role_cycle_harvest_potential": 20,
+      "upgrade_work_potential": 14
+    }
+  },
+  "emergency_policy": {
+    "hauler": 750,
+    "miner": 700,
+    "starter": 200,
+    "starter_extra": 100,
+    "total": 1750
+  },
+  "game_theory_example": {
+    "max_regret": {
+      "fortify": 2200,
+      "growth": 10000,
+      "raid": 3000,
+      "scout": 1000
+    },
+    "maximin": "fortify",
+    "minimax_regret": "scout",
+    "payoffs": {
+      "fortify": [
+        1800,
+        1500,
+        -2000
+      ],
+      "growth": [
+        4000,
+        -3000,
+        -12000
+      ],
+      "raid": [
+        1000,
+        -500,
+        -5000
+      ],
+      "scout": [
+        3500,
+        1000,
+        -3000
+      ]
+    },
+    "scenario_order": [
+      "calm",
+      "raid",
+      "war"
+    ],
+    "strictly_dominated": {
+      "raid": "fortify"
+    },
+    "worst_payoffs": {
+      "fortify": -2000,
+      "growth": -12000,
+      "raid": -5000,
+      "scout": -3000
+    }
+  },
+  "hauler_10carry_5move": {
+    "plain_distance_10": {
+      "capacity": 15.625,
+      "cost": 750,
+      "cycle": 32,
+      "replacement_per_tick": 0.5033557046979866,
+      "spawn_fraction": 0.030201342281879196
+    },
+    "plain_distance_20": {
+      "capacity": 8.064516129032258,
+      "cost": 750,
+      "cycle": 62,
+      "replacement_per_tick": 0.5067567567567568,
+      "spawn_fraction": 0.030405405405405407
+    },
+    "plain_distance_40": {
+      "capacity": 4.098360655737705,
+      "cost": 750,
+      "cycle": 122,
+      "replacement_per_tick": 0.5136986301369864,
+      "spawn_fraction": 0.030821917808219176
+    },
+    "road_distance_10": {
+      "capacity": 22.727272727272727,
+      "cost": 750,
+      "cycle": 22,
+      "replacement_per_tick": 0.5033557046979866,
+      "spawn_fraction": 0.030201342281879196
+    },
+    "road_distance_20": {
+      "capacity": 11.904761904761905,
+      "cost": 750,
+      "cycle": 42,
+      "replacement_per_tick": 0.5067567567567568,
+      "spawn_fraction": 0.030405405405405407
+    },
+    "road_distance_40": {
+      "capacity": 6.097560975609756,
+      "cost": 750,
+      "cycle": 82,
+      "replacement_per_tick": 0.5136986301369864,
+      "spawn_fraction": 0.030821917808219176
+    },
+    "swamp_distance_10": {
+      "capacity": 4.464285714285714,
+      "cost": 750,
+      "cycle": 112,
+      "replacement_per_tick": 0.5033557046979866,
+      "spawn_fraction": 0.030201342281879196
+    },
+    "swamp_distance_20": {
+      "capacity": 2.2522522522522523,
+      "cost": 750,
+      "cycle": 222,
+      "replacement_per_tick": 0.5067567567567568,
+      "spawn_fraction": 0.030405405405405407
+    },
+    "swamp_distance_40": {
+      "capacity": 1.1312217194570136,
+      "cost": 750,
+      "cycle": 442,
+      "replacement_per_tick": 0.5136986301369864,
+      "spawn_fraction": 0.030821917808219176
+    }
+  },
+  "investment": {
+    "benefit_start": 150.0,
+    "direct_progress": 5000,
+    "direct_ticks": 1000.0,
+    "finite_horizon_break_even": 400.0,
+    "horizon": 1000,
+    "invested_progress": 6200.0,
+    "invested_ticks": 828.5714285714286,
+    "save_ticks": 100.0
+  },
+  "investment_parameter_sensitivity": {
+    "cost_1000_increment_0": {
+      "benefit_start": 250.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": null,
+      "horizon": 1000,
+      "invested_progress": 4000.0,
+      "invested_ticks": 1200.0,
+      "save_ticks": 200.0
+    },
+    "cost_1000_increment_1": {
+      "benefit_start": 250.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 1250.0,
+      "horizon": 1000,
+      "invested_progress": 4750.0,
+      "invested_ticks": 1041.6666666666665,
+      "save_ticks": 200.0
+    },
+    "cost_1000_increment_2": {
+      "benefit_start": 250.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 750.0,
+      "horizon": 1000,
+      "invested_progress": 5500.0,
+      "invested_ticks": 928.5714285714286,
+      "save_ticks": 200.0
+    },
+    "cost_1000_increment_4": {
+      "benefit_start": 250.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 500.0,
+      "horizon": 1000,
+      "invested_progress": 7000.0,
+      "invested_ticks": 777.7777777777778,
+      "save_ticks": 200.0
+    },
+    "cost_250_increment_0": {
+      "benefit_start": 100.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": null,
+      "horizon": 1000,
+      "invested_progress": 4750.0,
+      "invested_ticks": 1050.0,
+      "save_ticks": 50.0
+    },
+    "cost_250_increment_1": {
+      "benefit_start": 100.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 350.0,
+      "horizon": 1000,
+      "invested_progress": 5650.0,
+      "invested_ticks": 891.6666666666666,
+      "save_ticks": 50.0
+    },
+    "cost_250_increment_2": {
+      "benefit_start": 100.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 225.0,
+      "horizon": 1000,
+      "invested_progress": 6550.0,
+      "invested_ticks": 778.5714285714286,
+      "save_ticks": 50.0
+    },
+    "cost_250_increment_4": {
+      "benefit_start": 100.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 162.5,
+      "horizon": 1000,
+      "invested_progress": 8350.0,
+      "invested_ticks": 627.7777777777778,
+      "save_ticks": 50.0
+    },
+    "cost_500_increment_0": {
+      "benefit_start": 150.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": null,
+      "horizon": 1000,
+      "invested_progress": 4500.0,
+      "invested_ticks": 1100.0,
+      "save_ticks": 100.0
+    },
+    "cost_500_increment_1": {
+      "benefit_start": 150.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 650.0,
+      "horizon": 1000,
+      "invested_progress": 5350.0,
+      "invested_ticks": 941.6666666666666,
+      "save_ticks": 100.0
+    },
+    "cost_500_increment_2": {
+      "benefit_start": 150.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 400.0,
+      "horizon": 1000,
+      "invested_progress": 6200.0,
+      "invested_ticks": 828.5714285714286,
+      "save_ticks": 100.0
+    },
+    "cost_500_increment_4": {
+      "benefit_start": 150.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 275.0,
+      "horizon": 1000,
+      "invested_progress": 7900.0,
+      "invested_ticks": 677.7777777777778,
+      "save_ticks": 100.0
+    }
+  },
+  "investment_sensitivity": {
+    "horizon_100": {
+      "benefit_start": 150.0,
+      "direct_progress": 500,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 400.0,
+      "horizon": 100,
+      "invested_progress": 0,
+      "invested_ticks": 828.5714285714286,
+      "save_ticks": 100.0
+    },
+    "horizon_1000": {
+      "benefit_start": 150.0,
+      "direct_progress": 5000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 400.0,
+      "horizon": 1000,
+      "invested_progress": 6200.0,
+      "invested_ticks": 828.5714285714286,
+      "save_ticks": 100.0
+    },
+    "horizon_150": {
+      "benefit_start": 150.0,
+      "direct_progress": 750,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 400.0,
+      "horizon": 150,
+      "invested_progress": 250.0,
+      "invested_ticks": 828.5714285714286,
+      "save_ticks": 100.0
+    },
+    "horizon_200": {
+      "benefit_start": 150.0,
+      "direct_progress": 1000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 400.0,
+      "horizon": 200,
+      "invested_progress": 600.0,
+      "invested_ticks": 828.5714285714286,
+      "save_ticks": 100.0
+    },
+    "horizon_400": {
+      "benefit_start": 150.0,
+      "direct_progress": 2000,
+      "direct_ticks": 1000.0,
+      "finite_horizon_break_even": 400.0,
+      "horizon": 400,
+      "invested_progress": 2000.0,
+      "invested_ticks": 828.5714285714286,
+      "save_ticks": 100.0
+    }
+  },
+  "miner_5work_1carry_3move": {
+    "cost": 700,
+    "replacement_per_tick": 0.47297297297297297,
+    "spawn_fraction": 0.018243243243243244,
+    "travel_ticks": 20
+  },
+  "remote_reserver_2claim_2move": {
+    "cost": 1300,
+    "one_source_increment_after_reserver": 2.6363636363636362,
+    "replacement_cycle_ticks": 550,
+    "replacement_per_tick": 2.3636363636363638,
+    "reservation_ticks_added_per_cycle": 1100,
+    "spawn_fraction": 0.02181818181818182,
+    "travel_ticks": 50,
+    "two_source_increment_after_reserver": 7.636363636363637
+  },
+  "road_plain_20": {
+    "construction_energy": 6000,
+    "efficient_body_payback": 43821.555467824735,
+    "efficient_body_savings_per_tick": 0.13691891891891886,
+    "fixed_body_payback": 12638.050779915746,
+    "fixed_body_savings_per_tick": 0.47475675675675677,
+    "repair_per_tick": 0.032,
+    "trips_per_tick": 0.02
+  },
+  "source": {
+    "neutral_per_tick": 5,
+    "owned_or_reserved_per_tick": 10,
+    "work_for_full_neutral": 3,
+    "work_for_full_owned": 5
+  }
+}

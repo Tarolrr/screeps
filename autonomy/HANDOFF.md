@@ -2,6 +2,14 @@
 
 Repository: `Tarolrr/screeps` on `master`, pushed through `637a3be` before the 2026-11-07 #14 run: all bootstrap/autonomy/e2e work is committed in per-issue commits per the commit-on-completion policy added to [PROCESS.md](PROCESS.md). Run artifacts under `*/.runs/` and `e2e/*/logs/` are git-ignored local evidence. At session start, inspect the current branch and working tree, inspect GitHub Issues in `Tarolrr/screeps` for task status, and use `python3 autonomy/coordination.py status` for the actual lease. Do not infer either from this handoff.
 
+## 2026-11-07 strategy research (`screeps-strategy-research-20261107`)
+
+Owner requested extensive strategic research/planning, then explicitly added game theory, enemies and an implementable design prioritizing economy, expansion, defense and attack. **#15 research/design complete**: entry point [docs/strategy/README.md](../docs/strategy/README.md); implementation-facing specification [DESIGN.md](../docs/strategy/DESIGN.md). Supporting files include reachable-code audit, official/primary research sources, reproducible Python/JSON calculations, and SVG/PNG charts. Profile `sustainable growth under threat` is a proposed default, not an already deployed policy or owner-selected risk optimum.
+
+Native workers `/root/strategy_audit`, `/root/economy_calculations`, `/root/strategy_sources` supplied bounded documents/calculations. Independent read-only reviewer `/root/independent_review` found a savings deadlock for expensive projects; the design now includes a bounded SAVING fund. A separate read-only design review clarified budget accounting, reserve scenarios, critical scheduling, early-RCL exceptions and combat evaluator limits. Rereviews accepted with no remaining must-fix findings; scope and residual risks are in [review.md](../docs/strategy/review.md).
+
+Validation: calculation script executed with boundary assertions and byte-for-byte JSON match; relative Markdown targets verified; charts generated and visually checked; installed common 2.16.0 / engine 4.3.0 mechanics and fingerprints recorded. These are analytical examples, not gameplay experiments or claims of measured policy gains. No production, live/private/spectator server or automation changes. #12–#13 remain separate open work. Next implementation, if requested, should be queued separately following DESIGN stages A–E; do not infer permission to deploy from the research request. Check current Git/issue/lease state at runtime.
+
 ## 2026-11-07 coordinator run (`screeps-coord-20261107-issue14`)
 
 **#14 E2E-VIEW — implementation complete.** Added `e2e/view/view.js`: a
