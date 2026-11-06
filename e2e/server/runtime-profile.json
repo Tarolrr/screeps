@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "id": "screeps-fence-research-node22-20261102",
+  "node": {
+    "version": "v22.23.4",
+    "abi": "127"
+  },
+  "packages": {
+    "engine": "4.3.0",
+    "driver": "5.3.0",
+    "backend": "3.3.0",
+    "common": "2.16.0",
+    "storage": "5.1.3",
+    "launcher": "4.2.0"
+  },
+  "files": {
+    "engine/dist/main.js": "d24cbee450dbbb71f2632ab198d37c8595370b5f9c2ef1f6341af7df919899a4",
+    "engine/dist/runner.js": "098e39a5bdf65128888829a0fc3ce3199efa943b237925b68685c131241078a8",
+    "engine/dist/processor.js": "53ae81ea0455b64359087dbdb638452acbaf62e61af3ad5e1023f1300e901341",
+    "engine/dist/processor/global.js": "17561aa5de3e9a90546329c17d6e038b7b6e775778ce1c0e97fb4aff1ff31345",
+    "driver/lib/index.js": "2080ac77155c822451534ffd1794a2732de9f999bcf0074853e38aea12a15e44",
+    "driver/lib/runtime/data.js": "ffbc0e1059ba83585ea0a006f5e230544820e097e3d35a4c821111439fd84e08",
+    "driver/lib/runtime/make.js": "5aa1d9c4f81e64ae788abd5e56bd78d86a216f49fc276a3764f0927349b5e179",
+    "driver/lib/runtime/runtime.js": "68fbfbd3513e6d68c8b343e154bae183ff73c67d910f90ef1fb1f88627c0abda",
+    "driver/lib/queue.js": "1dbd4770b3708cc47757d41ec68b48ad64ee5f49fd6f7b8aa11147135f11f6fb",
+    "driver/lib/bulk.js": "27359592242ece2cd4e62dcc2f6d8e5662dc6f2a0542329861cc29687e311969",
+    "backend/lib/index.js": "c1a12b7beb626be1b59edb3f992dca92163a3f475c2b37e3863d966112df1399",
+    "backend/lib/cronjobs.js": "5a28bb7b45f1a4d80c54ab2697d2436b34f96a944f2682eff60e937f0e071e0e",
+    "backend/lib/strongholds.js": "1c6be13b9518ed015fae5fda777921fa9df874826d3cdff165cafc5fbce85a3b",
+    "backend/lib/utils.js": "203400e38df1258dfaf38167ef61c1cb872ff16960791b23477fcc9726100701",
+    "backend/lib/cli/system.js": "c1ea98c980464eaa97baf50c40d1c6ac39b72d0ea85de6f5ae7e2beea4b8fd3f",
+    "common/lib/storage.js": "fe8a6e2958a2c2d226dfcce716aed9e9bc6eeabf2fe4d7b5b42cc797f2cba18c",
+    "common/lib/rpc.js": "a801f8354bd2217531ec007700e73a0983de3ab87a8ebe6675c4f625c48f7d4c",
+    "common/lib/config-manager.js": "6c45691c6d3773d2f17f74cc4dca0dae623d9551fe7cffd18f6a279ba3de4924",
+    "storage/lib/index.js": "64ccc6882fa254bc755f140e388ffa732be1169ef27df127432254ab5edc592f",
+    "storage/lib/db.js": "72d1498449d29bedb878d4d619754a1956853c434e5cdb1854fb481d2cabea6c",
+    "storage/lib/queue.js": "6fd41997578d7a14ca594442f1a4df66fe0d350426d11abdbbe3f6f2522ae8af",
+    "storage/lib/pubsub.js": "ceeea26570ae1a70ba3b310bbb9fbf55fd5810209d97e18db473761980e436ad",
+    "launcher/lib/start.js": "a4d561b9eec6cc0715c69846098a98d228b0c5d8834fde027e5bfa6e22c4e31a"
+  },
+  "capabilities": {
+    "runners": 1,
+    "processors": 1,
+    "backendCron": "disabled",
+    "scheduler": "gated-test-only",
+    "admission": false
+  }
+}
