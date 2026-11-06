@@ -1,6 +1,6 @@
 # Handoff
 
-Repository: `Tarolrr/screeps`. Changes from the bootstrap are local and uncommitted; no commit or push was authorized for that task. At session start, inspect the current branch and working tree, inspect GitHub Issues in `Tarolrr/screeps` for task status, and use `python3 autonomy/coordination.py status` for the actual lease. Do not infer either from this handoff.
+Repository: `Tarolrr/screeps` on `master`, pushed through `90112c9` (2026-11-06): all bootstrap/autonomy/e2e work is committed in per-issue commits per the commit-on-completion policy added to [PROCESS.md](PROCESS.md). Run artifacts under `*/.runs/` and `e2e/*/logs/` are git-ignored local evidence. At session start, inspect the current branch and working tree, inspect GitHub Issues in `Tarolrr/screeps` for task status, and use `python3 autonomy/coordination.py status` for the actual lease. Do not infer either from this handoff.
 
 The private server remains at `~/screeps`, with API port 21025 and CLI port 21026. [Server documentation](../docs/server/README.md) records commands and manifest, lockfile and mods snapshots. The repository-root `.screepsrc` is an ignored, private mode-600 reference copy; the server still reads `~/screeps/.screepsrc`. No server restart or runtime migration was performed. Preserve the server and its world. Node 22 is available under `~/.local/node22/bin`.
 
