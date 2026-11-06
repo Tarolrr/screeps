@@ -1,6 +1,35 @@
 # Handoff
 
-Repository: `Tarolrr/screeps` on `master`, pushed through `90112c9` (2026-11-06): all bootstrap/autonomy/e2e work is committed in per-issue commits per the commit-on-completion policy added to [PROCESS.md](PROCESS.md). Run artifacts under `*/.runs/` and `e2e/*/logs/` are git-ignored local evidence. At session start, inspect the current branch and working tree, inspect GitHub Issues in `Tarolrr/screeps` for task status, and use `python3 autonomy/coordination.py status` for the actual lease. Do not infer either from this handoff.
+Repository: `Tarolrr/screeps` on `master`, pushed through `637a3be` before the 2026-11-07 #14 run: all bootstrap/autonomy/e2e work is committed in per-issue commits per the commit-on-completion policy added to [PROCESS.md](PROCESS.md). Run artifacts under `*/.runs/` and `e2e/*/logs/` are git-ignored local evidence. At session start, inspect the current branch and working tree, inspect GitHub Issues in `Tarolrr/screeps` for task status, and use `python3 autonomy/coordination.py status` for the actual lease. Do not infer either from this handoff.
+
+## 2026-11-07 coordinator run (`screeps-coord-20261107-issue14`)
+
+**#14 E2E-VIEW — implementation complete.** Added `e2e/view/view.js`: a
+foreground-owned disposable spectator server with fixed ports, reusable
+F0/ECO-01-D/HAR-01 fixture profiles, slow and exclusive manual-step modes,
+loopback/Tailscale binding, optional real Steam auth, and a Tailscale-restricted
+offline spectator account (`view_spectator`). Admin CLI remains loopback-only;
+`0.0.0.0` requires Steam auth plus a server password supplied by environment.
+Steam credentials are not read in offline mode; real-auth credentials live only
+in the mode-600 scratch `.screepsrc` and are removed with the root. Documentation
+is in `docs/testing/view.md`.
+
+At this handoff an owner-requested demo is intentionally **running** at
+`100.96.112.15:32500`, room `W9N8`, `auth:none`, manual step mode; CLI is
+`127.0.0.1:32501`. Run id `view-1793983322490-919375`, controller PID `919375`.
+The owner connected successfully as `view_spectator`; a fenced step passed
+(`gameTime 1 -> 2`, sequence 1). Do not stop it merely as cleanup while the
+owner is watching. The foreground controller accepts `step N`, `status`, and
+`stop`; SIGTERM to the verified controller PID also invokes cleanup. Verify
+identity/current state rather than trusting these transient PID/port facts in a
+later session.
+
+Verification: viewer option tests PASS; isolated-server offline lifecycle tests
+PASS; existing full lifecycle test PASS before the final Tailscale extension;
+43 autonomy tests PASS; live no-auth Tailscale startup, HTTP offline login,
+fixture validation, client connection, socket binding and one fenced tick PASS.
+Independent review could not be delegated because the active environment
+prohibited subagent delegation; this limitation was recorded on the issue.
 
 The private server remains at `~/screeps`, with API port 21025 and CLI port 21026. [Server documentation](../docs/server/README.md) records commands and manifest, lockfile and mods snapshots. The repository-root `.screepsrc` is an ignored, private mode-600 reference copy; the server still reads `~/screeps/.screepsrc`. No server restart or runtime migration was performed. Preserve the server and its world. Node 22 is available under `~/.local/node22/bin`.
 

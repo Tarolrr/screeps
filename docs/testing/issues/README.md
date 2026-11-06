@@ -10,3 +10,4 @@
 - [E2E-BLD — Проверить паттерны, стройку, выбор целей и ремонт](https://github.com/Tarolrr/screeps/issues/11)
 - [E2E-INT — Проверить неизменённый main, диспетчер и восстановление](https://github.com/Tarolrr/screeps/issues/12)
 - [E2E-GATE — Проверить полноту покрытия и защиту от ложного PASS](https://github.com/Tarolrr/screeps/issues/13)
+- [E2E-VIEW — Наблюдаемый долгоживущий инстанс для Steam-клиента](https://github.com/Tarolrr/screeps/issues/14)

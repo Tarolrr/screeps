@@ -13,4 +13,5 @@ __pycache__/
 # Disposable isolated Screeps e2e instances and probe artifacts
 /e2e/server/.runs/
 /e2e/har/.runs/
+/e2e/view/.runs/
 /e2e/*/logs/

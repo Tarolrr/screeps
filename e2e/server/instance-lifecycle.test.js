@@ -5,7 +5,14 @@ const fs = require('fs/promises');
 const path = require('path');
 const {createIsolatedServer, _peerOwned} = require('./instance');
 async function main() {
+    await assert.rejects(createIsolatedServer({runId:'bad-host',httpPort:32131,cliPort:32132,host:'not-an-ip'}), /host must/);
+    await assert.rejects(createIsolatedServer({runId:'public-no-password',httpPort:32131,cliPort:32132,host:'0.0.0.0'}), /requires a server password/);
+    await assert.rejects(createIsolatedServer({runId:'public-cli',httpPort:32131,cliPort:32132,cliHost:'0.0.0.0'}), /CLI must remain/);
+    await assert.rejects(createIsolatedServer({runId:'bad-key',httpPort:32131,cliPort:32132,steamApiKey:'bad\nkey'}), /single-line/);
+    await assert.rejects(createIsolatedServer({runId:'bad-offline-id',httpPort:32131,cliPort:32132,offlineSteamId:'123'}), /17-digit/);
+    await assert.rejects(createIsolatedServer({runId:'two-auths',httpPort:32131,cliPort:32132,steamApiKey:'key',offlineSteamId:'76561197960287930'}), /mutually exclusive/);
     await assert.rejects(createIsolatedServer({runId:'invalid-preload',httpPort:32133,cliPort:32134,preload:'relative.js'}), /absolute file path/);
+    await assert.rejects(createIsolatedServer({runId:'empty-preload',httpPort:32133,cliPort:32134,preload:[]}), /at least one/);
     await assert.rejects(createIsolatedServer({runId:'missing-preload',httpPort:32133,cliPort:32134,preload:'/not/a/real/preload.js'}), /ENOENT/);
     const portServer = net.createServer();
     await new Promise((r,j)=>portServer.once('error',j).listen(32135,'127.0.0.1',r));

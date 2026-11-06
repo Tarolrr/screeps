@@ -22,11 +22,11 @@ function groupMembers(group) {
     return fs.readdirSync('/proc').filter(x => /^\d+$/.test(x)).map(Number)
         .filter(pid => { const p = procInfo(pid); return p && p.group === group && p.state !== 'Z'; });
 }
-async function freePort(port) {
+async function freePort(port, host = '127.0.0.1') {
     await new Promise((resolve, reject) => {
         const s = net.createServer();
         s.once('error', reject);
-        s.listen({host:'127.0.0.1', port, exclusive:true}, () => s.close(resolve));
+        s.listen({host, port, exclusive:true}, () => s.close(resolve));
     });
 }
 function ownsSocket(inode, group) {
@@ -99,20 +99,33 @@ function memAvailable() {
     if (!checked) throw Error('cannot inspect cgroup memory limits');
     return available;
 }
-async function createIsolatedServer({runId, serverHome = path.join(os.homedir(), 'screeps'), httpPort, cliPort, mods = [], minAvailableBytes = 1024 ** 3, nodeBinary = process.execPath, preload, keepCron = false, seedEnv = null} = {}) {
+async function createIsolatedServer({runId, serverHome = path.join(os.homedir(), 'screeps'), httpPort, cliPort, host = '127.0.0.1', cliHost = '127.0.0.1', steamApiKey = null, offlineSteamId = null, serverPassword = null, mods = [], minAvailableBytes = 1024 ** 3, nodeBinary = process.execPath, preload, keepCron = false, seedEnv = null} = {}) {
     if (process.platform !== 'linux') throw Error('Linux process ownership required');
     if (!/^[a-zA-Z0-9_-]{1,64}$/.test(runId || '')) throw Error('invalid runId');
     for (const p of [httpPort, cliPort]) if (!Number.isInteger(p) || p < 1024 || p > 65535) throw Error('explicit unprivileged ports required');
     if (httpPort === cliPort || [21025,21026].includes(httpPort) || [21025,21026].includes(cliPort)) throw Error('ports must be distinct from live server');
+    if (net.isIP(host) !== 4) throw Error('host must be an explicit IPv4 address');
+    if (cliHost !== '127.0.0.1') throw Error('CLI must remain bound to 127.0.0.1');
+    for (const [name, value] of [['steamApiKey', steamApiKey], ['serverPassword', serverPassword]]) {
+        if (value !== null && (typeof value !== 'string' || !value.trim() || /[\0\r\n]/.test(value))) throw Error(`${name} must be a non-empty single-line string`);
+    }
+    if (offlineSteamId !== null && (typeof offlineSteamId !== 'string' || !/^\d{17}$/.test(offlineSteamId))) throw Error('offlineSteamId must be a 17-digit Steam ID');
+    if (steamApiKey && offlineSteamId) throw Error('steamApiKey and offlineSteamId are mutually exclusive');
+    if (host === '0.0.0.0' && !serverPassword) throw Error('0.0.0.0 requires a server password');
     const home = await fsp.realpath(serverHome);
     const launcher = path.join(home,'node_modules/@screeps/launcher/bin/screeps.js');
     const seed = path.join(home,'node_modules/@screeps/launcher/init_dist/db.json');
     for (const mod of mods) if (!path.isAbsolute(mod) || !(await fsp.stat(mod)).isFile()) throw Error('mods must be existing absolute files');
-    let preloadPath;
+    let preloadPaths = [];
     if (preload !== undefined) {
-        if (typeof preload !== 'string' || !path.isAbsolute(preload) || /[\0\r\n]/.test(preload)) throw Error('preload must be an absolute file path');
-        preloadPath = await fsp.realpath(preload);
-        if (!(await fsp.stat(preloadPath)).isFile() || /[\0\r\n]/.test(preloadPath)) throw Error('preload must be an existing regular file');
+        const requested = Array.isArray(preload) ? preload : [preload];
+        if (!requested.length) throw Error('preload must contain at least one absolute file path');
+        for (const item of requested) {
+            if (typeof item !== 'string' || !path.isAbsolute(item) || /[\0\r\n]/.test(item)) throw Error('preload must be an absolute file path');
+            const preloadPath = await fsp.realpath(item);
+            if (!(await fsp.stat(preloadPath)).isFile() || /[\0\r\n]/.test(preloadPath)) throw Error('preload must be an existing regular file');
+            preloadPaths.push(preloadPath);
+        }
     }
     await fsp.mkdir(RUNS, {recursive:true, mode:0o700});
     const root = await fsp.mkdtemp(path.join(RUNS, runId + '-'));
@@ -123,7 +136,7 @@ async function createIsolatedServer({runId, serverHome = path.join(os.homedir(),
         if (busy) throw Error('instance operation already in progress');
         busy = true; try { return await fn(...args); } finally { busy = false; }
     }; }
-    const identity = {runId, marker, root, ports:{http:httpPort,cli:cliPort}, created: new Date().toISOString()};
+    const identity = {runId, marker, root, ports:{http:httpPort,cli:cliPort}, hosts:{http:host,cli:cliHost}, created: new Date().toISOString()};
     await fsp.writeFile(markerFile, JSON.stringify(identity), {mode:0o600, flag:'wx'});
     async function checkIdentity() {
         const actual = JSON.parse(await fsp.readFile(markerFile,'utf8'));
@@ -149,7 +162,7 @@ async function createIsolatedServer({runId, serverHome = path.join(os.homedir(),
         await checkIdentity();
         if (child) throw Error('already started');
         if (memAvailable() < minAvailableBytes) throw Error('insufficient available memory');
-        await freePort(httpPort); await freePort(cliPort);
+        await freePort(httpPort, host); await freePort(cliPort, cliHost);
         if (fs.existsSync(path.join(root,'storage.sock'))) throw Error('storage socket already exists; quarantine');
         const db = JSON.parse(await fsp.readFile(seed,'utf8'));
         // Packaged seed, not live world: retain neutral terrain/world and system NPC accounts only.
@@ -167,16 +180,24 @@ async function createIsolatedServer({runId, serverHome = path.join(os.homedir(),
         await fsp.writeFile(path.join(root,'db.json'), JSON.stringify(db), {flag:'wx'});
         await fsp.mkdir(path.join(root,'assets'));
         await fsp.mkdir(path.join(root,'logs'));
-        const steamModule = require.resolve('steam-webapi', {paths:[path.join(home,'node_modules/@screeps/backend')]});
-        const offlineMod = path.join(root,'offline-steam.js');
-        await fsp.writeFile(offlineMod, `module.exports = function () { require(${JSON.stringify(steamModule)}).ready = function (cb) { cb(null); }; };\n`, {flag:'wx'});
-        await fsp.writeFile(path.join(root,'mods.json'), JSON.stringify({mods:[offlineMod,...mods],bots:{}}), {flag:'wx'});
-        const config = `port = ${httpPort}\nhost = 127.0.0.1\ncli_port = ${cliPort}\ncli_host = 127.0.0.1\nrunners_cnt = 1\nrunner_threads = 1\nprocessors_cnt = 1\nlogdir = logs\nmodfile = mods.json\nassetdir = assets\ndb = db.json\nrestart_interval = 3600\n`;
+        const runtimeMods = [...mods];
+        if (!steamApiKey) {
+            const steamModule = require.resolve('steam-webapi', {paths:[path.join(home,'node_modules/@screeps/backend')]});
+            const offlineMod = path.join(root,'offline-steam.js');
+            const offlineAuth = offlineSteamId
+                ? ` Steam.prototype.authenticateUserTicket = function (_params, cb) { cb(null, {params:{result:'OK',steamid:${JSON.stringify(offlineSteamId)}}}); };`
+                : '';
+            await fsp.writeFile(offlineMod, `module.exports = function () { var Steam = require(${JSON.stringify(steamModule)}); Steam.ready = function (cb) { cb(null); };${offlineAuth} };\n`, {flag:'wx'});
+            runtimeMods.unshift(offlineMod);
+        }
+        await fsp.writeFile(path.join(root,'mods.json'), JSON.stringify({mods:runtimeMods,bots:{}}), {flag:'wx'});
+        const authConfig = `${steamApiKey ? `steam_api_key = ${steamApiKey}\n` : ''}${serverPassword ? `password = ${serverPassword}\n` : ''}`;
+        const config = `port = ${httpPort}\nhost = ${host}\ncli_port = ${cliPort}\ncli_host = ${cliHost}\n${authConfig}runners_cnt = 1\nrunner_threads = 1\nprocessors_cnt = 1\nlogdir = logs\nmodfile = mods.json\nassetdir = assets\ndb = db.json\nrestart_interval = 3600\n`;
         await fsp.writeFile(path.join(root,'.screepsrc'),config,{flag:'wx',mode:0o600});
         const out = fs.openSync(path.join(root,'launcher.log'),'a');
         try {
             exited = false; spawnError = null;
-            child = spawn(nodeBinary,[launcher,'start'], {cwd:root, detached:true, stdio:['ignore',out,out], env:{PATH:process.env.PATH, HOME:root, NODE_ENV:'production', STEAM_KEY:'e2e-offline-placeholder', SCREEPS_E2E_ROOT:root, SCREEPS_E2E_MARKER:marker, ...(keepCron ? {SCREEPS_E2E_KEEP_CRON:'1'} : {}), ...(preloadPath ? {NODE_OPTIONS:`--require=${JSON.stringify(preloadPath)}`} : {})}});
+            child = spawn(nodeBinary,[launcher,'start'], {cwd:root, detached:true, stdio:['ignore',out,out], env:{PATH:process.env.PATH, HOME:root, NODE_ENV:'production', STEAM_KEY:steamApiKey || 'e2e-offline-placeholder', SCREEPS_E2E_ROOT:root, SCREEPS_E2E_MARKER:marker, ...(serverPassword ? {SERVER_PASSWORD:serverPassword} : {}), ...(keepCron ? {SCREEPS_E2E_KEEP_CRON:'1'} : {}), ...(preloadPaths.length ? {NODE_OPTIONS:preloadPaths.map(p => `--require=${JSON.stringify(p)}`).join(' ')} : {})}});
             child.on('error', error => { spawnError = error; });
             child.on('exit', () => { exited = true; });
             await new Promise((resolve,reject) => {
@@ -213,6 +234,6 @@ async function createIsolatedServer({runId, serverHome = path.join(os.homedir(),
             throw err;
         } finally { fs.closeSync(out); }
     }
-    return {root, ports:identity.ports, marker, cliOptions:{host:'127.0.0.1',port:cliPort}, assertIdentity:exclusive(checkIdentity), start:exclusive(startInternal), stop:exclusive(stopInternal), destroy:exclusive(destroyInternal)};
+    return {root, ports:identity.ports, marker, cliOptions:{host:cliHost,port:cliPort}, publicHost:host, assertIdentity:exclusive(checkIdentity), start:exclusive(startInternal), stop:exclusive(stopInternal), destroy:exclusive(destroyInternal)};
 }
 module.exports = { createIsolatedServer, _peerOwned: peerOwned };
