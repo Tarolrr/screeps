@@ -1,0 +1,18 @@
+; Example only; the live server reads its own .screepsrc.
+steam_api_key = REPLACE_ME
+port = 21025
+host = 0.0.0.0
+password = REPLACE_ME
+cli_port = 21026
+cli_host = localhost
+runners_cnt = 1
+runner_threads = 2
+processors_cnt = 1
+logdir = logs
+modfile = mods.json
+assetdir = assets
+db = db.json
+log_console = false
+log_rotate_keep = 5
+storage_disabled = false
+restart_interval = 3600

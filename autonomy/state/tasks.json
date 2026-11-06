@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "SCREEPS-001",
+      "title": "Перенос контекста приватного сервера и e2e",
+      "status": "done",
+      "priority": 1,
+      "depends_on": [],
+      "acceptance": [
+        "e2e перенесены и запускаются из этого репозитория",
+        "локальная .screepsrc сохранена без попадания секретов в git",
+        "команды сервера, зависимости, известные баги dist2 и dist2dbg документированы",
+        "runtime сервера и пользовательская диагностика сохранены"
+      ],
+      "evidence": [
+        "Independent final review accepted; e2e relocated with repository-relative strategy and configurable server/CLI paths.",
+        "All e2e JavaScript files passed Node22 syntax check; modules load from external cwd: dist27, dist2=21.",
+        "Private .screepsrc equals source, is mode600, ignored; sanitized template and server manifest/lock/mods snapshots are git-visible.",
+        "Live suite not rerun: W5N8 reserved by user2. Safe preflight refusal checked; server tick remained1000ms. No restart/runtime migration; dist/dist2 and pre-existing dist2dbg preserved."
+      ],
+      "github_issue": 1,
+      "github_url": "https://github.com/Tarolrr/screeps/issues/1"
+    },
+    {
+      "id": "SCREEPS-002",
+      "title": "Адаптация автономного процесса minimal-android-keyboard",
+      "status": "done",
+      "priority": 1,
+      "depends_on": [],
+      "acceptance": [
+        "AGENTS.md и autonomy адаптированы к Screeps",
+        "реестр, lease, восстановление, idle, неинтерактивная работа и делегирование согласованы",
+        "нет чужих automation ID, разрешений публикации или привязок к Android",
+        "проверки инфраструктуры автономности проходят"
+      ],
+      "evidence": [
+        "Independent final review accepted; 43 offline infrastructure tests passed, including legacy queue cycles and scheduled-release refusal for invalid queues.",
+        "Unconfigured scheduler helper fails closed; local JSON queue active; native delegation and coordinator lease/recovery/idle/noninteractive rules adapted.",
+        "Read-only GitHub working branch d6c5f17 matches source checkout; source default branch lacks autonomy.",
+        "Read-only Happier/history audit found no Screeps automation; source project automation disabled. No schedule created or activated; source project permissions and provider routing not imported."
+      ],
+      "github_issue": 2,
+      "github_url": "https://github.com/Tarolrr/screeps/issues/2"
+    },
+    {
+      "id": "SCREEPS-003",
+      "title": "Независимая проверка переноса и handoff",
+      "status": "done",
+      "priority": 1,
+      "depends_on": [],
+      "acceptance": [
+        "независимый read-only reviewer проверил diff и критерии",
+        "замечания исправлены и проверены",
+        "HANDOFF и реестр отражают фактические результаты и ограничения"
+      ],
+      "evidence": [
+        "Independent reviewer /root/independent_review accepted final implementation with no remaining must-fix findings.",
+        "Review fixes: root-scoped manifest ignores, Python bytecode ignores, rejection of self/cyclic legacy task dependencies.",
+        "Reviewer independently verified43 offline tests, all e2e JS syntax, local config equality/mode/ignoring, and snapshot visibility.",
+        "Live gameplay remains unverified in this migration due reserved test room; known dist2 construction failures retained in e2e/README.md."
+      ],
+      "review_inputs": [
+        "SCREEPS-001 and SCREEPS-002 implementation evidence; final completion requires this review"
+      ],
+      "github_issue": 3,
+      "github_url": "https://github.com/Tarolrr/screeps/issues/3"
+    },
+    {
+      "id": "SCREEPS-004",
+      "title": "Аудит поведения стратегии и подробное ТЗ минимального модульного e2e-набора",
+      "status": "in_progress",
+      "priority": 1,
+      "depends_on": [
+        "SCREEPS-003"
+      ],
+      "scope": [
+        "Тщательно прочитать dist/, dist2/, существующий e2e и исходники установленного сервера",
+        "Создать трассируемую матрицу поведения и минимальную очередь реализации тестов с подробными сценариями",
+        "Выделить отдельное исследование неизвестных возможностей сервера, управления окружением и потиковой наблюдаемости",
+        "Тесты, стратегию и живой мир в этом задании не менять"
+      ],
+      "acceptance": [
+        "Для каждого собственного модуля и исполняемого поведения указаны сценарий, состояния и доказательства или обоснованное исключение",
+        "Для сценариев заданы подготовка мира, действия, потиковые наблюдения, строгие позитивные/негативные критерии, временные границы и cleanup",
+        "Описаны ограничения существующих тестов и способы исключить ложный PASS",
+        "Созданы отдельные задачи исследования среды и реализации минимального e2e-набора с зависимостями и ссылками на ТЗ",
+        "Независимое read-only ревью полноты и исполнимости выполнено"
+      ],
+      "evidence": [],
+      "github_issue": 4,
+      "github_url": "https://github.com/Tarolrr/screeps/issues/4"
+    },
+    {
+      "id": "SCREEPS-005",
+      "title": "Исправить перенос очереди: GitHub Issues — единственный активный реестр",
+      "status": "in_progress",
+      "priority": 1,
+      "depends_on": [],
+      "acceptance": [
+        "Все существующие задачи перенесены в Issues Tarolrr/screeps с критериями, доказательствами и корректными статусами",
+        "Задачи и зависимости проверены обратным чтением; выполненные закрыты как completed",
+        "queue-source.json переключён на github; tasks.json помечен только архивом, fallback отсутствует",
+        "README, AGENTS и autonomy описывают Issues основной очередью; независимая проверка выполнена"
+      ],
+      "evidence": [
+        "gh repo view/read работает; gh label create и подключённый GitHub create_issue отказаны: HTTP403 Resource not accessible by personal access token. Ни одной удалённой задачи или метки не создано.",
+        "Пользователю отправлен асинхронный запрос обновить права без передачи секрета. GitHub принят как единственная целевая очередь, переключение только после успешного readback.",
+        "Пользователь обновил права; gh label create успешно выполнен. Миграция продолжена."
+      ],
+      "github_issue": 5,
+      "github_url": "https://github.com/Tarolrr/screeps/issues/5"
+    }
+  ],
+  "archived": true,
+  "active_queue": "https://github.com/Tarolrr/screeps/issues?q=is%3Aissue+label%3Atask",
+  "archive_note": "Read-only migration snapshot. GitHub Issues is the sole active queue; no fallback. Migrated and read back 2026-11-02. Subsequent status/evidence only on GitHub."
+}

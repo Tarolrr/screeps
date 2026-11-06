@@ -1,4 +1,12 @@
-# Private Server
+# Strategy development and local server
+
+The standalone server lives separately in `~/screeps`; its operating notes and dependency snapshots are in [docs/server](docs/server/README.md). Live integration tests and their limitations are documented in [e2e/README.md](e2e/README.md). These tests modify the server and require an empty, unreserved test room and exclusive access.
+
+For the current work state and next steps, read [autonomy/HANDOFF.md](autonomy/HANDOFF.md). The sole active task queue is [GitHub Issues](autonomy/GITHUB_ISSUES.md) in `Tarolrr/screeps`. The configured source is GitHub and the local registry is a read-only archive, not a fallback.
+
+The following retained setup and deployment notes are historical: they describe an older Node 10 and Python 2 workflow. Use the server notes above for the existing Node 22 installation.
+
+# Historical: Private Server
 
 Server should have at least 2GB of RAM to successfully build isolated-vm.
 Then it could be tuned down probably.

@@ -1,7 +1,16 @@
 node_modules
-package-lock.json
-package.json
+/package-lock.json
+/package.json
 yarn.lock
 .screeps.yml
 .vscode
 coverage
+.screepsrc
+
+__pycache__/
+*.py[cod]
+
+# Disposable isolated Screeps e2e instances and probe artifacts
+/e2e/server/.runs/
+/e2e/har/.runs/
+/e2e/*/logs/
