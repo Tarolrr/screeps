@@ -48,7 +48,11 @@ this handoff — see `docs/testing/eco.md`.
 and removed. Live user server/world untouched throughout.
 
 **Remaining queue:** #12 (integration), #13 (gate/coverage) — previously
-blocked on #9/#10/#11, now unblocked. Verify issue state at runtime.
+blocked on #9/#10/#11, now unblocked; #14 (E2E-VIEW spectator instance,
+owner-requested, status:ready). All work committed+pushed through
+`5e479cd` under the new commit-on-completion policy. `dist2dbg` deleted
+per owner instruction; run artifacts git-ignored. Verify issue state at
+runtime.
 
 ## 2026-11-06 coordinator run (`screeps-coord-20261106-run1`)
 
