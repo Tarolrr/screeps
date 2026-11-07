@@ -10,6 +10,10 @@
 | --- | --- |
 | Этот документ | Почему так выбирать; подробный разбор компромиссов |
 | [DESIGN.md](DESIGN.md) | Что реализовать: архитектура, бюджеты, приоритеты, миссии, проверка |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | Архитектура приложения: модули, фазы тика, контракты, Memory, ошибки, сквозная трасса |
+| [INTEGRATION.md](INTEGRATION.md) | Фактические точки dist2, изоляция shadow, миграция владельца и откат |
+| [RUNTIME-CONSTRAINTS.md](RUNTIME-CONSTRAINTS.md) | Что гарантирует и чего не доказывает runtime; границы учёта эффектов |
+| [ARCHITECTURE-REVIEW.md](ARCHITECTURE-REVIEW.md) | Независимая проверка архитектуры и готовность к этапу A |
 | [code-audit.md](code-audit.md) | Какие стратегические решения уже принимает твой код |
 | [calculations.md](calculations.md), [скрипт](calculations.py), [JSON](calculations.json) | Откуда получены числа и при каких предпосылках |
 | [research.md](research.md) | Документация, исследования, теория игр и ограничения переноса |
