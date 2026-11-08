@@ -96,7 +96,7 @@ function createStrategyApp(deps) {
             const state = openState(frame);
             const roomNames = listRoomNames();
             const table = routeRooms({ state: state, roomNames: roomNames });
-            return READY(table, fingerprint({ state: state, roomNames: roomNames }));
+            return READY(table, fingerprint({ state: state === null || state === undefined ? null : state.kind === 'READY' ? state.inputFingerprint : { kind: String(state.kind), reason: state.reasonCode || state.reason || null }, roomNames: roomNames }));
         },
     });
 
