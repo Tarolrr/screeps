@@ -13,7 +13,7 @@
 const STRATEGY_NAMESPACES = Object.freeze(['strategy', 'strategyShadow', 'strategyMigration']);
 
 /** Methods of Game/Room objects the GameReadPort may call (read-only). */
-const READ_ONLY_GAME_CALLS = Object.freeze(['cpu.getUsed', 'cpu.getHeapStatistics', 'getObjectById', 'room.getEventLog', 'room.getTerrain', 'room.find', 'room.lookAt', 'room.lookForAt', 'room.lookForAtArea', 'map.describeExits', 'map.getRoomTerrain', 'map.getRoomStatus']);
+const READ_ONLY_GAME_CALLS = Object.freeze(['cpu.getUsed', 'cpu.getHeapStatistics', 'getObjectById', 'room.getEventLog', 'room.getTerrain', 'room.find', 'room.lookAt', 'room.lookForAt', 'room.lookForAtArea', 'map.describeExits', 'map.getRoomTerrain', 'map.getRoomStatus', 'store.getUsedCapacity', 'store.getCapacity', 'store.getFreeCapacity']);
 
 function finiteOrNull(value) {
     return typeof value === 'number' && isFinite(value) ? value : null;
@@ -75,7 +75,7 @@ function createCpuPort(getGame) {
  * keep references beyond the tick. No other component receives this port.
  * @param {function(): *} getGame
  */
-function createGameReadPort(getGame) {
+function createGameReadPort(getGame, getMemory) {
     function game() {
         const g = getGame();
         if (!g) throw new Error('Game is not available');
@@ -110,6 +110,28 @@ function createGameReadPort(getGame) {
             if (!room || typeof room.getEventLog !== 'function') return null;
             const log = room.getEventLog();
             return Array.isArray(log) ? log : null;
+        },
+        /**
+         * Read-only copy of selected legacy creep memory fields (contract A.3).
+         * Reads Memory.creeps[name] directly (never the creep.memory getter, which
+         * auto-creates entries); returns null when absent. Never writes Memory.
+         * @returns {{role: string|null, strategy: {operationKey: string|null, homeRoom: string|null, ownerEpoch: number|null}|null}|null}
+         */
+        creepMemory: function (name) {
+            const m = typeof getMemory === 'function' ? getMemory() : undefined;
+            const creeps = m && Object.prototype.hasOwnProperty.call(m, 'creeps') ? m.creeps : null;
+            if (!creeps || typeof creeps !== 'object' || !Object.prototype.hasOwnProperty.call(creeps, name)) return null;
+            const entry = creeps[name];
+            if (!entry || typeof entry !== 'object') return null;
+            const env = entry.strategy && typeof entry.strategy === 'object' ? entry.strategy : null;
+            return {
+                role: typeof entry.role === 'string' ? entry.role : null,
+                strategy: env ? {
+                    operationKey: typeof env.operationKey === 'string' ? env.operationKey : null,
+                    homeRoom: typeof env.homeRoom === 'string' ? env.homeRoom : null,
+                    ownerEpoch: Number.isInteger(env.ownerEpoch) ? env.ownerEpoch : null,
+                } : null,
+            };
         },
         /** Read-only call list for documentation/tests. */
         allowedCalls: READ_ONLY_GAME_CALLS,
@@ -191,7 +213,7 @@ function createRuntimePorts(overrides) {
     return Object.freeze({
         clock: createClockPort(getGame),
         cpu: createCpuPort(getGame),
-        gameRead: createGameReadPort(getGame),
+        gameRead: createGameReadPort(getGame, getMemory),
         memory: Object.freeze(memory),
         log: createLogPort({ sink: o.sink }),
     });

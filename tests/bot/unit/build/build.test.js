@@ -37,7 +37,7 @@ test('build is deterministic', function () {
 test('manifest lists every bundled module with hashes and versions', function () {
     const m = first.manifest;
     assert.match(m.buildId, /^b-[0-9a-f]{16}$/);
-    assert.equal(m.contractVersion, 'A.2');
+    assert.equal(m.contractVersion, 'A.3');
     assert.equal(m.testBuild, false);
     assert.equal(m.schemaVersion, 1);
     assert.equal(m.screepsModuleName, 'main');

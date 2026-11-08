@@ -58,7 +58,7 @@ test('memory ports are namespaced to strategy keys only', function () {
 });
 
 test('contexts carry values only; shadow has no gateway key', function () {
-    const ctx = createContext({ mode: 'shadow', tick: 1000, snapshot: F.sampleSnapshot(), stateView: F.sampleStateView(), stateRevision: 3, versions: { contractVersion: 'A.2', schemaVersion: 1, buildId: 'b', policyVersion: null }, ownerTokens: {}, budget: { admit: function () { return null; } } });
+    const ctx = createContext({ mode: 'shadow', tick: 1000, snapshot: F.sampleSnapshot(), stateView: F.sampleStateView(), stateRevision: 3, versions: { contractVersion: 'A.3', schemaVersion: 1, buildId: 'b', policyVersion: null }, ownerTokens: {}, budget: { admit: function () { return null; } } });
     assert.equal('gateway' in ctx, false);
     assert.equal(ctx.capabilities.ISSUE_INTENTS, false);
     assert.equal(ctx.capabilities.WRITE_LEGACY_MEMORY, false);

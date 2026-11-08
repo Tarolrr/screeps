@@ -3,7 +3,7 @@
 // decision: see docs/strategy/CONTRACTS-A.md "Правила изменения".
 
 /** Version of the stage-A shared contracts (docs/strategy/CONTRACTS-A.md). */
-const CONTRACT_VERSION = 'A.2';
+const CONTRACT_VERSION = 'A.3';
 
 /** Memory.strategy schema version planned for StateStore schema1 (ARCHITECTURE §6). */
 const SCHEMA_VERSION = 1;

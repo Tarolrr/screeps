@@ -8,6 +8,8 @@
 // values through frame.result(...) and frame.services ({clock, cpu, log, state}).
 // Top level: declarations only.
 
+const { createReader } = require('./observation/ScreepsReader');
+
 /**
  * @param {ReturnType<typeof import('./app/ports').createRuntimePorts>} ports
  * @param {{buildId:string, contractVersion:string, schemaVersion:number}} buildInfo
@@ -15,15 +17,15 @@
  *            stateApi: (object|null), faultStore: (object|null), components: Array<object>}}
  */
 function wireStageA(ports, buildInfo) {
-    void ports;
     void buildInfo;
+    const reader = createReader({ gameRead: ports.gameRead, cpu: ports.cpu });
     // A0: nothing wired yet. A5 replaces this body, e.g.
     //   const reader = createReader({ gameRead: ports.gameRead, cpu: ports.cpu });
     //   const store = createStateStore({ memory: ports.memory, buildInfo, log: ports.log });
     //   return { observe: (frame, budget) => reader.capture(frame.tick, {rooms: 'ALL_VISIBLE', stage: 'FULL'}, budget),
     //            openState: (frame) => store.open(frame.tick), stateApi: store.api(), faultStore: store.faultStore(),
     //            components: createShadowComponents({ models, recorder }) };
-    return { observe: null, openState: null, stateApi: null, faultStore: null, components: [] };
+    return { observe: function (frame, budget) { return reader.capture(frame.tick, { rooms: 'ALL_VISIBLE', stage: 'FULL' }, budget); }, openState: null, stateApi: null, faultStore: null, components: [] };
 }
 
 module.exports = { wireStageA };

@@ -22,7 +22,7 @@ function setup(options) {
         listRoomNames: function () { return ports.gameRead.roomNames(); },
         components: o.components || [],
         stateApi: o.stateApi || null,
-        buildInfo: { buildId: 'b-test', contractVersion: 'A.2', schemaVersion: 1 },
+        buildInfo: { buildId: 'b-test', contractVersion: 'A.3', schemaVersion: 1 },
     });
     return { app: app, fake: fake, trapGame: trapGame, trapMemory: trapMemory, lines: lines, legacy: legacy };
 }

@@ -11,7 +11,7 @@
 // allowedRootKeys are violations (throw or record). Pass allowedRootKeys: '*'
 // to allow everything and only count writes (legacy loop tests).
 
-const READ_ONLY_METHODS = Object.freeze(['getUsed', 'getHeapStatistics', 'getObjectById', 'getEventLog', 'getTerrain', 'find', 'lookAt', 'lookForAt', 'lookForAtArea', 'describeExits', 'getRoomTerrain', 'getRoomStatus', 'get', 'getRangeTo', 'inRangeTo', 'isEqualTo', 'isNearTo', 'findClosestByRange', 'findInRange', 'hasOwnProperty', 'toString', 'valueOf', 'toJSON']);
+const READ_ONLY_METHODS = Object.freeze(['getUsed', 'getHeapStatistics', 'getObjectById', 'getEventLog', 'getTerrain', 'find', 'lookAt', 'lookForAt', 'lookForAtArea', 'describeExits', 'getRoomTerrain', 'getRoomStatus', 'getUsedCapacity', 'getCapacity', 'getFreeCapacity', 'get', 'getRangeTo', 'inRangeTo', 'isEqualTo', 'isNearTo', 'findClosestByRange', 'findInRange', 'hasOwnProperty', 'toString', 'valueOf', 'toJSON']);
 
 class TrapViolation extends Error {
     constructor(kind, where) {

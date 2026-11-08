@@ -1,4 +1,4 @@
-# Контракты этапа A (`contract A.2`)
+# Контракты этапа A (`contract A.3`)
 
 Статус: **зафиксировано задачей [#19](https://github.com/Tarolrr/screeps/issues/19) (STRAT-A0)**, версия `A.2` после независимого ревью. Основание — [ARCHITECTURE](ARCHITECTURE.md) §1–§9, [INTEGRATION](INTEGRATION.md), [RUNTIME-CONSTRAINTS](RUNTIME-CONSTRAINTS.md), [DESIGN](DESIGN.md) §3. Код контракта: `src/bot/domain/**` (версия — `src/bot/domain/version.js`: `CONTRACT_VERSION = 'A.2'`, `SCHEMA_VERSION = 1`), раскладка состояния — `src/bot/domain/stateLayout.js`, порты и каркас — `src/bot/app/**`, `src/bot/integration/LegacyAdapter.js`, `src/bot/main.js`, `src/bot/stageA.js`, сборка — `tools/build-strategy.js`.
 
@@ -408,3 +408,4 @@ stageA.wireStageA(ports, buildInfo) -> {observe, openState, stateApi, faultStore
 
 - `A.1` — первая фиксация (STRAT-A0, #19).
 - `A.2` — по итогам ревью #19: компоненты получают только `frame.services` (без портов), `stageA.js`; полная раскладка `Memory.strategy`/`Memory.strategyShadow`, `StatePatch` и владельцы путей; DTO FlowDelta/FlowWindow, EventCursor, Binding/ObservedBinding, ObservedOperation, CalendarEntry/Calendar, LedgerView, ReplacementPlan, ForecastSummary, ReplayFixture body, ReconciliationPatch, DemandOption; `Reservation.unknownAmount` + `RETIRED`, узел `spawnPool:<room>`; `NormalizedEvent.energyAmount`; переходы `NO_EFFECT→ISSUED`, `UNKNOWN→UNKNOWN`; новый stage-A порядок фаз и CPU-ограничения shadow; fingerprint снимка без `cpu`; двухпроходный `deepFreeze`; отказ canonical JSON на массивах с доп. свойствами; quarantine ключей control; ограничение логов `APP_CREATE_FAULT`.
+- `A.3` — аддитивно (координатор, по отчёту A1 #20): `GameReadPort.creepMemory(name)` — read-only копия `{role, strategy: {operationKey, homeRoom, ownerEpoch}}` из `Memory.creeps[name]` без обращения к getter `creep.memory` (он создаёт запись) и без записи Memory; read-only методы store `getUsedCapacity/getCapacity/getFreeCapacity` разрешены Reader; `EnergyObjectType` дополнен `tower` (класс STORAGE_CONTAINER). Флаг экспорта replay в схему `Memory.strategyShadow` пока не добавлен — решается при композиции A5.

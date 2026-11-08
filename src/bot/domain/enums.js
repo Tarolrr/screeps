@@ -29,12 +29,12 @@ const Visibility = makeEnum(['VISIBLE', 'NOT_VISIBLE']);
 const EnergyNodeClass = makeEnum(['SPAWN_EXTENSION', 'STORAGE_CONTAINER', 'CARGO', 'PILE', 'REMOTE']);
 
 /** Concrete object type behind an energy node. */
-const EnergyObjectType = makeEnum(['spawn', 'extension', 'storage', 'container', 'link', 'terminal', 'creep', 'resource', 'tombstone', 'ruin', 'remote']);
+const EnergyObjectType = makeEnum(['spawn', 'extension', 'storage', 'container', 'link', 'terminal', 'tower', 'creep', 'resource', 'tombstone', 'ruin', 'remote']);
 
 /** Which EnergyObjectType values belong to which EnergyNodeClass. */
 const ENERGY_NODE_OBJECT_TYPES = Object.freeze({
     SPAWN_EXTENSION: Object.freeze(['spawn', 'extension']),
-    STORAGE_CONTAINER: Object.freeze(['storage', 'container', 'link', 'terminal']),
+    STORAGE_CONTAINER: Object.freeze(['storage', 'container', 'link', 'terminal', 'tower']),
     CARGO: Object.freeze(['creep']),
     PILE: Object.freeze(['resource', 'tombstone', 'ruin']),
     REMOTE: Object.freeze(['remote']),
