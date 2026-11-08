@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Single definition of "queue has work" for coordination.release and automation_pause.
+"""Single definition of "queue has work" for automation_pause (scheduled finalization).
 
 Source is chosen by autonomy/queue-source.json ("legacy" JSON registry or "github" issues).
 Any access or data problem raises QueueError: an error is never an empty queue.

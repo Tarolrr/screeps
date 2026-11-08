@@ -7,13 +7,12 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import automation_pause
 automation_pause.AUTOMATION_ID = "testautomation"
 automation_pause.SERVER_ID = "testserver"
 automation_pause.SERVER_URL = "http://127.0.0.1:12345"
-import coordination
 import queue_source as q
 
 
@@ -229,7 +228,7 @@ class LegacyCycleTest(unittest.TestCase):
             self.write_registry(path, {"a": [], "b": ["a"], "c": ["a"], "d": ["b", "c"]})
             self.assertTrue(q.legacy_has_work(path))
 
-    def test_scheduled_release_does_not_pause_for_cyclic_registry(self):
+    def test_scheduled_finalize_does_not_pause_for_cyclic_registry(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.write_registry(root / "reg.json", {"a": ["b"], "b": ["a"]})
@@ -238,35 +237,44 @@ class LegacyCycleTest(unittest.TestCase):
             real_queue_has_work = q.queue_has_work
             env = {"SCREEPS_AUTOMATION_ID": automation_pause.AUTOMATION_ID,
                    "SCREEPS_AUTOMATION_ORIGIN": "scheduled"}
-            with patch.dict(os.environ, env), patch.object(automation_pause, "ROOT", root), patch.object(
-                    coordination.subprocess, "check_output", return_value=f"{root}\n"), patch.object(
+            with patch.dict(os.environ, env), idle_registry(), patch.object(
+                    automation_pause, "ROOT", root), patch.object(
                     q, "queue_has_work", side_effect=lambda repo: real_queue_has_work(repo, config)), patch.object(
-                    automation_pause, "finalize_under_lock") as pause:
-                result = coordination.finalize_scheduled_release({"owner": "w", "acquired_at": 1.0}, "w", root)
-            self.assertEqual(result, {"ok": False, "error": "legacy_dependency_cycle"})
+                    automation_pause, "pause") as pause, patch.object(automation_pause, "load_token") as auth:
+                with self.assertRaisesRegex(automation_pause.PauseError, "^legacy_dependency_cycle$"):
+                    automation_pause.finalize("w", None)
             pause.assert_not_called()
+            auth.assert_not_called()
+
+
+def idle_registry():
+    """Stand-in for an autonomyctl registry with no task claims and no receipt."""
+    registry = Mock()
+    registry.read.return_value = {"version": 2, "tasks": {}, "resources": {}, "history": []}
+    registry.directory = Path("/nonexistent-autonomy-registry")
+    return patch.object(automation_pause, "open_registry", return_value=registry)
 
 
 class ConsumersTest(unittest.TestCase):
-    def test_release_does_not_pause_on_queue_error_and_continues_on_work(self):
-        active = {"owner": "w", "acquired_at": 1.0}
+    def test_finalize_does_not_pause_on_queue_error_and_continues_on_work(self):
         env = {"SCREEPS_AUTOMATION_ID": automation_pause.AUTOMATION_ID, "SCREEPS_AUTOMATION_ORIGIN": "scheduled"}
-        for value, expected in ((q.QueueError("gh_failed"), {"ok": False, "error": "gh_failed"}),
-                                (True, {"ok": True, "action": "continue", "reason": "remaining_work"})):
+        for value in (q.QueueError("gh_failed"), True):
             kwargs = {"side_effect": value} if isinstance(value, Exception) else {"return_value": value}
-            with patch.dict(os.environ, env), patch.object(automation_pause, "ROOT", q.ROOT), patch.object(
-                    coordination.subprocess, "check_output", return_value=f"{q.ROOT}\n"), patch.object(
-                    q, "queue_has_work", **kwargs), patch.object(automation_pause, "finalize_under_lock") as pause:
-                self.assertEqual(coordination.finalize_scheduled_release(active, "w", q.ROOT), expected)
+            with patch.dict(os.environ, env), idle_registry(), patch.object(
+                    q, "queue_has_work", **kwargs), patch.object(automation_pause, "pause") as pause:
+                if isinstance(value, Exception):
+                    with self.assertRaisesRegex(automation_pause.PauseError, "^gh_failed$"):
+                        automation_pause.finalize("w", None)
+                else:
+                    self.assertEqual(automation_pause.finalize("w", None),
+                                     {"ok": True, "action": "continue", "reason": "remaining_work"})
                 pause.assert_not_called()
 
     def test_helper_refuses_pause_on_work_or_queue_error(self):
         for patched, error in ((dict(return_value=True), "queue_has_work"),
                                (dict(side_effect=q.QueueError("gh_failed")), "gh_failed")):
-            guard = patch.object(automation_pause, "coordinator_guard")
-            with guard as entered, patch.object(q, "queue_has_work", **patched), patch.object(
-                    automation_pause, "finalize_under_lock") as pause:
-                entered.return_value.__enter__.return_value = ({}, Path("."))
+            with idle_registry(), patch.object(q, "queue_has_work", **patched), patch.object(
+                    automation_pause, "pause") as pause:
                 output = io.StringIO()
                 with redirect_stdout(output):
                     code = automation_pause.main(["--owner", "w"])
