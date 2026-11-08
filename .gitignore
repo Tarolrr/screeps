@@ -1,6 +1,4 @@
 node_modules
-/package-lock.json
-/package.json
 yarn.lock
 .screeps.yml
 .vscode
@@ -15,3 +13,6 @@ __pycache__/
 /e2e/har/.runs/
 /e2e/view/.runs/
 /e2e/*/logs/
+
+# Strategy bundle output (tools/build-strategy.js)
+/build/

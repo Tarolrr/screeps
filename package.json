@@ -1,0 +1,17 @@
+{
+  "name": "screeps-strategy",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Screeps strategy: adaptive bot (src/bot) bundled over the legacy dist2 executor",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:strategy": "node tools/build-strategy.js",
+    "test:bot": "node --test \"tests/bot/**/*.test.js\""
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
