@@ -12,6 +12,7 @@ __pycache__/
 /e2e/server/.runs/
 /e2e/har/.runs/
 /e2e/view/.runs/
+/e2e/strat/.runs/
 /e2e/*/logs/
 
 # Strategy bundle output (tools/build-strategy.js)
