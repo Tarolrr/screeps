@@ -50,7 +50,7 @@ function walkPlain(value, where, problems) {
 test('artifact is a marked test build with fake dist2 and the real shadow pipeline', function () {
     assert.equal(artifact.manifest.testBuild, true);
     assert.match(artifact.manifest.buildId, /^t-/);
-    assert.equal(artifact.manifest.contractVersion, 'A.4');
+    assert.equal(artifact.manifest.contractVersion, 'A.5');
     const paths = artifact.manifest.inputs.map(function (i) { return i.path; });
     for (const p of ['src/bot/stageA.js', 'src/bot/integration/ShadowAdapter.js', 'src/bot/planning/TravelEstimate.js', 'src/bot/telemetry/DecisionRecorder.js']) assert.ok(paths.indexOf(p) !== -1, p);
     assert.equal(paths.some(function (p) { return p.indexOf('dist2/') === 0; }), false);

@@ -28,12 +28,21 @@
 // is SHADOW (operator: Memory.strategy.control.rooms[room].requestedMode = 'shadow').
 // Default is legacy with NO shadow work: OBSERVE captures only shadow rooms and returns
 // REJECTED(NOT_REQUESTED) when there are none (no snapshot CPU before legacy).
+//
+// Presentation (STRAT-VIEW, contract A.5, docs/strategy/SHADOW-A.md §5): component
+// present.shadow (CLOSE, after close.shadow) gets ONLY ports.visual, ports.console and the
+// read-only ports.operatorFlags (+ log); it reads frame.result(...) and the read-only
+// services.state view. The operator console API `global.strat` is installed here (first
+// loop after a reset, never at require) over ports.operator — the only writer of
+// Memory.strategyView and Memory.strategyShadow.exportRequest — and read-only views.
 
 const { createStateStore } = require('./state/StateStore');
 const { createReader } = require('./observation/ScreepsReader');
 const { createShadowComponents, shadowRoomsOf } = require('./integration/ShadowAdapter');
 const { REJECTED } = require('./domain/results');
 const { ReasonCode } = require('./domain/reasonCodes');
+const { createPresenter } = require('./telemetry/Presenter');
+const { createStratCommands } = require('./telemetry/present/commands');
 
 /**
  * @param {ReturnType<typeof import('./app/ports').createRuntimePorts>} ports
@@ -55,6 +64,14 @@ function wireStageA(ports, buildInfo) {
         buildInfo: buildInfo,
         log: ports.log,
     });
+    const readOnly = store.readOnlyApi();
+    if (ports.visual && ports.console && ports.operatorFlags) {
+        const presenter = createPresenter({ visual: ports.visual, console: ports.console, flags: ports.operatorFlags, log: ports.log });
+        components.push(presenter.component);
+        if (ports.operator && ports.commands) {
+            ports.commands.install('strat', createStratCommands({ operator: ports.operator, view: readOnly.view, modelFor: presenter.modelFor, clock: ports.clock }));
+        }
+    }
     return {
         observe: function (frame, budget) {
             const rooms = shadowRoomsOf(frame.result('boot.router'));
@@ -62,7 +79,7 @@ function wireStageA(ports, buildInfo) {
             return reader.capture(frame.tick, { rooms: rooms, stage: 'FULL' }, budget);
         },
         openState: function (frame) { return store.open(frame.tick); },
-        stateApi: store.readOnlyApi(),
+        stateApi: readOnly,
         faultStore: store.faultStore(),
         components: components,
     };

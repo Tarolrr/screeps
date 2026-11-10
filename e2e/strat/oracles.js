@@ -18,7 +18,8 @@
 // Exactly the namespaces owned by the new system (stateLayout / CONTRACTS-A §5).
 // Any other key that merely starts with "strategy" is foreign to both systems:
 // it stays inside the legacy comparison AND is reported as a stray key (FAIL).
-const STRATEGY_NAMESPACES = Object.freeze(['strategy', 'strategyShadow', 'strategyMigration']);
+// strategyView: operator-only flags namespace (contract A.5), written by the operator/seed, never by components.
+const STRATEGY_NAMESPACES = Object.freeze(['strategy', 'strategyShadow', 'strategyMigration', 'strategyView']);
 const isStrategyKey = k => STRATEGY_NAMESPACES.includes(k);
 const strayStrategyKeys = mem => (mem && typeof mem === 'object' ? Object.keys(mem).filter(k => /^strategy/i.test(k) && !isStrategyKey(k)).sort() : []);
 const LEGACY_GEN_ID = /\b(source|spawnProcess|creepOrder|constructionOrder)_(\d+)_(\d+)\b/g;

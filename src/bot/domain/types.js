@@ -49,7 +49,7 @@
  *
  * @typedef {Object} Snapshot
  * @property {'Snapshot'} dtoType
- * @property {string} contractVersion 'A.4'
+ * @property {string} contractVersion 'A.5'
  * @property {number} tick
  * @property {string|null} shard
  * @property {'CRITICAL'|'FULL'} captureStage

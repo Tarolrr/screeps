@@ -171,4 +171,29 @@ function createTrapMemory(initial, options) {
     };
 }
 
-module.exports = { READ_ONLY_METHODS, TrapViolation, createTrapGame, createTrapMemory };
+/**
+ * Fake RoomVisual global (STRAT-VIEW): records every constructed visual and every shape
+ * call as {room, shape, args} (args JSON-copied). Shapes like the engine: text, rect,
+ * line, circle, poly (chainable), plus clear/getSize/export.
+ * @returns {{RoomVisual: function, journal: {constructed: string[], ops: Array<{room:string, shape:string, args:Array}>}}}
+ */
+function createRoomVisualRecorder() {
+    const journal = { constructed: [], ops: [] };
+    function RoomVisual(roomName) {
+        if (!(this instanceof RoomVisual)) throw new TypeError('RoomVisual must be constructed with new');
+        this.roomName = roomName;
+        journal.constructed.push(roomName);
+    }
+    ['text', 'rect', 'line', 'circle', 'poly'].forEach(function (shape) {
+        RoomVisual.prototype[shape] = function () {
+            journal.ops.push({ room: this.roomName, shape: shape, args: JSON.parse(JSON.stringify(Array.prototype.slice.call(arguments))) });
+            return this;
+        };
+    });
+    RoomVisual.prototype.clear = function () { return this; };
+    RoomVisual.prototype.getSize = function () { return 0; };
+    RoomVisual.prototype.export = function () { return ''; };
+    return { RoomVisual: RoomVisual, journal: journal };
+}
+
+module.exports = { READ_ONLY_METHODS, TrapViolation, createTrapGame, createTrapMemory, createRoomVisualRecorder };

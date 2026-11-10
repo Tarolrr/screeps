@@ -14,6 +14,7 @@
 | PLAN | `plan.shadow` | `planning/ShadowGovernor.evaluateRoom` (RoomGovernor.propose) | — |
 | ADMIT | `admit.shadow` | гипотетический `BudgetLedger.admit` наступивших предложений (ничего не резервируется); DecisionRecord при значимом изменении; подготовка proposals | (буфер DecisionRecorder) |
 | CLOSE | `close.shadow` | записи прерываний; кольцо решений и proposals — **двумя отдельными пакетами** (отказ пакета proposals не блокирует кольцо с гистерезисом); удаление proposals комнат, выведенных из shadow; TTL и replay-экспорт; затем `StateStore.close(T)` → `strategy.lastClosedTick = T` (последняя запись тика) | `planning`; close — внутренний writer StateStore |
+| CLOSE | `present.shadow` (STRAT-VIEW, `A.5`) | оверлей RoomVisual и событийные строки консоли (§5); только чтение | — (Memory не пишет) |
 | CLOSE | `close.report` (A0) | сводка тика (heap) | — |
 
 Все компоненты shadow — класс бюджета `optional` (без заимствования bucket), под FaultBoundary. Кроме проверки TickRunner, каждый компонент сам допускает себя по **измеренной** оценке CPU (heap: максимум из скользящего среднего и медленно затухающего пика, начиная с консервативных априорных значений reconcile 5, forecast 10, plan/admit/close 1 — не меньше измеренных) и при `used + оценка > min(limit, tickLimit) − 2 − 5` возвращает `DEFERRED(BUDGET_DEFERRED)`. Компонент получает только значения `frame.result(...)` и пишет только через **свой** handle (`stageA.js`): observation → reconcile, finance → forecast, planning → close (plan/admit только читают); общего диспетчера записи нет. `expectedRevision` — ревизия view, прочитанного в начале компонента, затем ревизия, возвращённая его предыдущим принятым пакетом (без «слепого» перечитывания). `closeTick` — функция над `store.close`. GameReadPort, MemoryPort, gateway, функции legacy компонентам не передаются. Каждый следующий компонент работает только если предыдущий в этом тике `READY`; иначе он передаёт причину дальше (`DEFERRED`/`UNKNOWN`/`REJECTED{dependsOn}`).
@@ -86,5 +87,35 @@ Pipeline `shadow-a5` (`ShadowAdapter.replayShadowFixture`) повторяет RE
 - Ошибка записи кольца теряет только буфер этого тика; значимость сравнивается с сохранённым кольцом, поэтому запись повторится.
 
 Тесты: `tests/bot/integration/` — артефакт тестовой сборки (фейк dist2, настоящий конвейер) в загрузчике Screeps над детерминированным миром `support/simWorld.js`; реальная dist2 — дифференциальный прогон legacy vs shadow (`realLegacy.test.js`); чистые модули — нативно и с mapPatch (`units*.test.js`).
+
+## 5. Просмотр: оверлей и консоль (STRAT-VIEW, `contract A.5`)
+
+Задача [#27](https://github.com/Tarolrr/screeps/issues/27). Компонент `present.shadow` (CLOSE, после `close.shadow`, бюджет optional, под FaultBoundary) **только показывает** то, что конвейер уже записал: текущий снимок (`frame.result('observe.snapshot')`), StateView (`services.state.view()`: кольцо решений, прогноз, окна потоков, proposals) и решение роутера. Порты — только `VisualPort` (`new RoomVisual(room)`: text/rect/line/circle/poly), `ConsolePort` (строка в консоль) и `OperatorFlagReader` (копия `Memory.strategyView`). Нет GameReadPort, MemoryPort, gateway, writer handle: компонент не пишет Memory и не создаёт intents. Нет shadow-комнат → `REJECTED(NOT_REQUESTED)`, флаги не читаются. Нехватка CPU (оценка: измеренная, априорно 1.5; та же формула потолка и `bucket ≥ 1000`) → `DEFERRED(BUDGET_DEFERRED)`, ничего не рисуется.
+
+**Флаги оператора** — отдельный операторский namespace (не StateStore, компоненты не пишут):
+
+```js
+Memory.strategyView = { rooms: { W1N1: { overlay: true } }, console: true };  // оба поля необязательны
+```
+
+`overlay` по умолчанию **выкл.** (рисуются только комнаты с `requestedMode: 'shadow'` **и** `overlay: true`); `console` по умолчанию **вкл.** (строки только при наличии shadow-комнат). Схема строгая (`validateStrategyView`: `rooms.<имя комнаты>.overlay: boolean` ≤ 64 комнат, `console: boolean`, прочие ключи запрещены, ≤ 8192 символов JSON); невалидное содержимое игнорируется целиком (действуют умолчания) с одной строкой `VIEW_FLAGS_INVALID` (повтор того же — не чаще раза в 1000 тиков).
+
+**Команды консоли** (`global.strat`, устанавливаются в первом `loop` после reset, не при require; работают в песочнице консоли вне loop и возвращают текст):
+
+| Команда | Что делает |
+| --- | --- |
+| `strat.report(room?)` | сводка комнаты (без аргумента — все shadow-комнаты): строки панели, спавны «shadow vs legacy», proposals, замены, последнее окно потоков |
+| `strat.why(room)` | последняя запись журнала решений с объяснением (режим/удержание, потребности, альтернативы, сравнение с legacy, UNKNOWN, баланс, ожидаемый факт) |
+| `strat.visual(room, on = true)` | пишет `Memory.strategyView.rooms[room] = {overlay: on}` (сохраняет валидные прочие поля; невалидный объект заменяется новым); единственная запись — `Memory.strategyView` |
+| `strat.export(ticks)` | `ticks` — целое 1..49; пишет `Memory.strategyShadow.exportRequest = {requested: true, ticks, tickFrom: Game.time + 1}` (каждый вызов — новый запрос, §2); без `Memory.strategyShadow` — отказ `NO_SHADOW_STATE` |
+| `strat.help()` | справка |
+
+**Оверлей** (≤ 64 элементов на комнату, приоритет: панель, спавны, потоки, крипы; ≤ 20 подписей крипов, ≤ 3 спавнов): панель в левом верхнем углу — режим (цвет: GROW зелёный, STABILIZE жёлтый, ALERT оранжевый, RECOVER красный, SIEGE пурпурный), с какого тика, удержание; причина, зрелость, угроза; прерывание (если последняя запись — прерывание); свободная энергия (`forecast.freeEnergyNow`, возраст прогноза) на полосе с отметками нижнего (красная) и целевого (зелёная) резерва из последней записи; нижняя оценка дохода за 100 тиков с качеством; ближайший дефицит; качество данных (качество прогноза, разрывы в последних 3 окнах, причины UNKNOWN). UNKNOWN всегда серый `?`, никогда 0. У спавна две строки: `shadow: …` (принятая альтернатива `spawn:`/`emergency:` последней полной записи, иначе `defer`/ближайшая `schedule`) и `legacy: <роль> <имя>`/`legacy: idle` по `spawning` снимка; расхождение (shadow спаунит функцию, а legacy другое/ничего; legacy спаунит то, чего shadow не планирует) — красная строка и красное кольцо. Подпись крипа: роль и TTL; `repl @T` — старт замены из потребностей последней полной записи (только слоты legacy `…/legacy/…/<крип>#gN`, попавшие в окно 150 тиков), красным при `CRITICAL_DEADLINE` или `T < now`. Стрелки потоков источник → первый спавн по `harvest` последнего полного окна (у ControllerSnapshot нет позиции — стрелок к контроллеру нет).
+
+**Консоль** — строки `[shadow <room> t<tick>] <span style="color:…">…</span>` только при изменении: режим (`mode A -> B since tT (reason)`), набор proposals (`proposals: feed 150e @t1040 …`/`proposals cleared`), расхождение с legacy по записи решения (`divergence LEGACY_BEHIND|LEGACY_UNPLANNED_SPAWN …`, возврат — `legacy consistent with shadow again`), новая причина UNKNOWN. ≤ 5 строк за тик (не напечатанная из-за лимита повторяется на следующем тике), одинаковый текст по комнате не повторяется 100 тиков. Последнее состояние — в heap; после reset базой служат записи кольца **до** текущего тика (уже объявленное не повторяется, записанное в этом тике — объявляется).
+
+CPU (Node 22, Cortex-A55, одна комната, 12 крипов, без стоимости настоящего RoomVisual): только консоль ≈ 0.03 мс/тик, оверлей ≈ 0.12 мс/тик (~22 элемента); в артефакте разница в пределах шума. На сервере добавляется сериализация визуалов (≈ десятки элементов на комнату); ожидание — ≤ 0.5 CPU на комнату с оверлеем, не измерено.
+
+Тесты: `tests/bot/unit/present/` (раскладка, UNKNOWN, события/лимит, флаги, пропуск по CPU, порты, команды; нативно и с mapPatch), `tests/bot/integration/presenter.test.js` (артефакт в загрузчике с ловушками и фейковым `RoomVisual`).
 
 **Reset и `Memory.strategy` (находка e2e RESET на b-003544fc5aa70751).** Расхождение `revision`/`recentPatchIds` между прогоном с reset и без него начиная с тика после reset ожидаемо: снимка T−1 в heap нет, поэтому Reconciler пишет для этого тика UNKNOWN-дельту (`EVENT_GAP`) — другие `flowWindows` и другие content-hash `patchId`; кэш прогноза пуст, поэтому прогноз пересчитывается и пишется лишний пакет finance (+1 revision). Legacy-память и intents не затрагиваются (LEGACY-EQ PASS).

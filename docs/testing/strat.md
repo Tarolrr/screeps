@@ -386,6 +386,10 @@ Artifact: branch `autonomy/issue-25` (STRAT-A5 after independent review fixes), 
 - A pre-fix A5 artifact (`b-003544fc5aa70751`) gave the same four PASS verdicts (`strat-load-1794213111381-904309`, `strat-shadow-noop-1794213320200-909181`, `strat-legacy-eq-1794213320222-909182`, `strat-reset-1794213320228-909183`).
 - Not measured here: CPU on the server runtime per tick (the suite does not record per-tick CPU of the strategy code).
 
+## Executed runs (STRAT-VIEW artifact with overlay, 2026-11-11, coordinator)
+
+Artifact `b-f153c080e0fca6df` (contract A.5, presenter), seed = shadow control for W9N8 plus `Memory.strategyView = {rooms:{W9N8:{overlay:true}}, console:true}`. First run FAILed only because the oracle did not know the new operator namespace `strategyView` (seeded into both baseline and artifact); it is now in the exact allowed set. Rerun: `strat-shadow-noop-1794352539706-3627120` PASS (`--expect-shadow`), `strat-legacy-eq-1794352539703-3627121` PASS — overlay/console leave legacy Memory, objects, action logs and event logs identical to flat dist2.
+
 ## Findings
 
 1. **Load.** The artifact loads as the single module `main`, exports `loop`,

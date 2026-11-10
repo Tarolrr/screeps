@@ -121,6 +121,22 @@ const ShadowRoot = S.object({
     replayExport: S.optional(S.nullable(ReplayExport)),
 });
 
+/**
+ * Operator view flags (contract A.5): Memory.strategyView, an operator-only namespace.
+ * Written ONLY by the operator (console edit or the `strat.visual(room, on)` command,
+ * which runs in the console sandbox outside loop). Never written by a component, not
+ * managed by StateStore (no PATCH_RULES entry, not a MemoryPort namespace). The
+ * presenter (present.shadow) reads it through a read-only accessor; invalid content is
+ * ignored (defaults apply) with one rate-limited log line.
+ *   rooms.<room>.overlay  RoomVisual overlay for that shadow room (default false)
+ *   console               shadow event lines in the console (default true)
+ */
+const STRATEGY_VIEW_NAMESPACE = 'strategyView';
+const StrategyView = S.object({
+    rooms: S.optional(S.record(roomName, S.object({ overlay: S.bool() }), { maxKeys: LIMITS.shadowRooms })),
+    console: S.optional(S.bool()),
+});
+
 /** Read-only view returned by StateStore.open (A2); deep-frozen by the store. */
 const StateView = S.object({
     dtoType: S.literal('StateView'),
@@ -307,7 +323,7 @@ module.exports = {
     STAGE_A_EMPTY_STRATEGY_KEYS,
     PATCH_RULES,
     ReplayExportStatus,
-    LAYOUT_SCHEMAS: Object.freeze({ StrategyRoot: StrategyRoot, ShadowRoot: ShadowRoot, ShadowRoom: ShadowRoom, Migrations: Migrations, StateView: StateView, ReconciliationPatch: ReconciliationPatch, ExportRequest: ExportRequest, ReplayExport: ReplayExport }),
+    LAYOUT_SCHEMAS: Object.freeze({ StrategyRoot: StrategyRoot, ShadowRoot: ShadowRoot, ShadowRoom: ShadowRoom, Migrations: Migrations, StateView: StateView, ReconciliationPatch: ReconciliationPatch, ExportRequest: ExportRequest, ReplayExport: ReplayExport, StrategyView: StrategyView }),
     patchOwner,
     validateStatePatch,
     emptyStrategyRoot,
@@ -317,4 +333,6 @@ module.exports = {
     validateShadowRoot,
     validateStateView: function (value) { return validate(StateView, value); },
     validateReconciliationPatch,
+    STRATEGY_VIEW_NAMESPACE,
+    validateStrategyView: function (value) { return validate(StrategyView, value); },
 };
