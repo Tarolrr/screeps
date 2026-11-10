@@ -756,7 +756,14 @@ const ReplayStateSelection = S.object({
     shadowRooms: S.record(roomName, S.object({
         eventCursor: S.nullable(EventCursor),
         flowWindows: S.array(FlowWindow),
+        // contract A.4 (optional, shadow pipeline fixtures of STRAT-A5): the rest of the
+        // shadow state the pipeline reads, so a replay starts from exactly the live state
+        observedBindings: S.optional(S.record(id, ObservedBinding)),
+        decisionRing: S.optional(S.array(DecisionRecord, { maxLength: 100 })),
     })),
+    // contract A.4 (optional): Memory.strategy.lastClosedTick and strategyShadow.observedOperations
+    lastClosedTick: S.optional(S.nullable(tick)),
+    observedOperations: S.optional(S.record(id, ObservedOperation)),
 });
 
 const ReplayFixtureBody = S.refine(S.object({

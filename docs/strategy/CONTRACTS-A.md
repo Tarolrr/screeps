@@ -1,6 +1,6 @@
-# Контракты этапа A (`contract A.3`)
+# Контракты этапа A (`contract A.4`)
 
-Статус: **зафиксировано задачей [#19](https://github.com/Tarolrr/screeps/issues/19) (STRAT-A0)**, версия `A.2` после независимого ревью. Основание — [ARCHITECTURE](ARCHITECTURE.md) §1–§9, [INTEGRATION](INTEGRATION.md), [RUNTIME-CONSTRAINTS](RUNTIME-CONSTRAINTS.md), [DESIGN](DESIGN.md) §3. Код контракта: `src/bot/domain/**` (версия — `src/bot/domain/version.js`: `CONTRACT_VERSION = 'A.2'`, `SCHEMA_VERSION = 1`), раскладка состояния — `src/bot/domain/stateLayout.js`, порты и каркас — `src/bot/app/**`, `src/bot/integration/LegacyAdapter.js`, `src/bot/main.js`, `src/bot/stageA.js`, сборка — `tools/build-strategy.js`.
+Статус: **зафиксировано задачей [#19](https://github.com/Tarolrr/screeps/issues/19) (STRAT-A0)**, версия `A.2` после независимого ревью. Основание — [ARCHITECTURE](ARCHITECTURE.md) §1–§9, [INTEGRATION](INTEGRATION.md), [RUNTIME-CONSTRAINTS](RUNTIME-CONSTRAINTS.md), [DESIGN](DESIGN.md) §3. Код контракта: `src/bot/domain/**` (версия — `src/bot/domain/version.js`: `CONTRACT_VERSION = 'A.4'` (история ниже), `SCHEMA_VERSION = 1`), раскладка состояния — `src/bot/domain/stateLayout.js`, порты и каркас — `src/bot/app/**`, `src/bot/integration/LegacyAdapter.js`, `src/bot/main.js`, `src/bot/stageA.js`, сборка — `tools/build-strategy.js`.
 
 Параллельные задачи A1–A6 опираются на этот документ и **не меняют** перечисленные здесь имена, поля, enum, пути и инварианты.
 
@@ -53,6 +53,7 @@ Gateway на этапе A не существует. `TickRunner.register` от�
 | `INVALID_RECORD` | DTO/persisted record не прошёл валидацию → карантин |
 | `NAME_COLLISION` | §5: короткое имя совпало для другого полного ключа |
 | `COMPONENT_FAULT`, `RETRY_COOLDOWN`, `CIRCUIT_OPEN` | §7: FaultBoundary |
+| `NOT_REQUESTED` | A.4: работа новой системы для комнаты не запрошена (по умолчанию legacy без shadow) |
 
 ## 3. Enum (`src/bot/domain/enums.js`)
 
@@ -168,7 +169,7 @@ Withdraw и transfer в событии не различаются (нет пр�
 **ReplayFixture** `{header, body}` (`validateReplayFixture`): `header.contentFingerprint = fingerprint(body)`, `header.tickFrom/tickTo` = первый/последний снимок, `header.expectedReasonCodes = body.expectedReasonCodes`.
 
 - **ReplayFixtureHeader**: `fixtureType:'ReplayFixture'`, `fixtureVersion: 1`, `contractVersion`, `buildId`, `schemaVersion`, `policyVersion?`, `seed?`, `tickFrom ≤ tickTo`, `rooms` (отсортированы), `contentFingerprint`, `expectedReasonCodes`.
-- **body**: `snapshots: Snapshot[]` (по tick, ≥1), `state: {revision, control: {rooms}, shadowRooms: {[room]: {eventCursor?, flowWindows}}}` (выбранные поля StateView, без чужой Memory и credentials), `events: NormalizedEvent[]` (по (effectTick, roomName, originalArrayIndex)), `expectedReasonCodes`, `expectedForecast: {[room]: ForecastSummary}`.
+- **body**: `snapshots: Snapshot[]` (по tick, ≥1), `state: {revision, control: {rooms}, shadowRooms: {[room]: {eventCursor?, flowWindows, observedBindings?, decisionRing?}}, lastClosedTick?, observedOperations?}` (выбранные поля StateView, без чужой Memory и credentials; поля с `?` после `flowWindows` — A.4, необязательны, их пишет shadow-экспорт A5), `events: NormalizedEvent[]` (по (effectTick, roomName, originalArrayIndex)), `expectedReasonCodes`, `expectedForecast: {[room]: ForecastSummary}`.
 
 **ControlRecord** `{requestedMode, effectiveOwner, epoch, transitionPhase?, transitionId?, previousOwner?, blockedReason?}`; **FaultStatus** `{component, consecutiveFailures, totalFailures, lastFailureTick?, lastInputFingerprint?, lastErrorCode?, breakerUntil?, halfOpen}`.
 
@@ -201,7 +202,10 @@ strategyShadow = {
   }},
   ledger: { reservations: { [reservationId]: Reservation } },      // гипотетический ledger, ≤512
   observedOperations: { [observationKey]: ObservedOperation },     // ≤1024
-  proposals: { [proposalId]: Proposal }                            // ≤200
+  proposals: { [proposalId]: Proposal },                           // ≤200
+  exportRequest?: {requested, ticks?: 1..49|null, tickFrom?: tick|null}|null,   // A.4: пишет только оператор
+  replayExport?: {requestFingerprint, status: RECORDING|READY|FAILED|EXPIRED, startedAt?, completedAt?,
+                  reasonCode?, detail?: json, fixture?: ReplayFixture}|null      // A.4: writer planning
 }
 ```
 
@@ -224,6 +228,9 @@ strategyShadow = {
 | strategyShadow | `ledger.reservations.<id>` | `finance` (A4) | Reservation | `reservationId` = ключ | да |
 | strategyShadow | `rooms.<room>.decisionRing` | `planning` (A5) | DecisionRecord[≤100] | — | нет |
 | strategyShadow | `proposals.<id>` | `planning` (A5) | Proposal | `proposalId` = ключ | да |
+| strategyShadow | `replayExport` | `planning` (A5, A.4) | ReplayExport? (READY ⇔ fixture) | — | да |
+| strategyShadow | `exportRequest` | **оператор** (консоль), не патчится компонентами | ExportRequest? | — | — |
+| strategy | meta `lastClosedTick` | StateStore `close(tick)` (A.4, внутренняя запись CLOSE, без revision) | tick | — | — |
 | strategyShadow | `schemaVersion` | StateStore внутри | — | — | — |
 
 Обязанности A2: `apply` создаёт недостающие промежуточные контейнеры по `emptyShadowRoom()`/`emptyShadowRoot()`; повтор `patchId` (из `recentPatchIds`) — no-op; пакет применяется целиком или отклоняется (`REJECTED(STALE_INPUT)` при чужой ревизии, `REJECTED(INVALID_RECORD)` при невалидном патче или чужом пути). `control` на этапе A никто из компонентов не меняет: StateStore создаёт пустую схему, режим комнаты меняет оператор/инструмент координатора. **ReconciliationPatch** (выход A3, `validateReconciliationPatch`): `{tick, patches: StatePatch[] (только writer 'observation'), gaps: EventGap[], domainStatus: {[room]: OK|UNCERTAIN_FUNDING}, reasonCodes}`.
@@ -374,8 +381,14 @@ BudgetLedger.admit(context, proposal, ledgerView) -> READY({reservations: Reserv
 
 ```text
 RoomGovernor.propose(context, roomState) -> Proposal[]                  (context.mode === 'shadow', без gateway; missionPatches = [])
-DecisionRecorder.createDecisionRecorder({capacityPerRoom: 100}) -> {append(record) -> Result, drain() -> StatePatch[] (writer 'planning')}
-ShadowAdapter.createShadowComponents({models, recorder}) -> ComponentSpec[]
+    реализация A.4: planning/ShadowGovernor.propose / evaluateRoom (полная оценка: режим, зрелость, потребности, сравнение с legacy)
+DecisionRecorder.createDecisionRecorder({capacityPerRoom: 100, maxRingChars?, readRing?, readProposals?})
+    -> {append(record) -> Result, lastRecord(room), stageProposals(room, upserts, deletes), drain(tick) -> StatePatch[] (writer 'planning'),
+        drainRing(tick), drainProposals(tick)}   (кольцо и proposals — отдельные пакеты)
+ShadowAdapter.createShadowComponents({models?, recorder?, state: {observation, finance, planning}, closeTick, buildInfo?, log?}) -> ComponentSpec[]
+    reconcile.shadow, forecast.shadow, plan.shadow, admit.shadow, close.shadow (docs/strategy/SHADOW-A.md)
+ShadowAdapter.replayShadowFixture(fixture) -> {reasonCodes, forecast, summary}   (pipeline 'shadow-a5' в tools/replay.js)
+StateStore.close(tick) -> READY({lastClosedTick, revision}) | REJECTED(STALE_INPUT|INCOMPATIBLE_SCHEMA|INVALID_RECORD)   (A.4)
     фазы RECONCILE..CLOSE; входы: frame.result('boot.router') (только newSystem === 'SHADOW'),
     frame.result('observe.snapshot'), frame.services.state (view/apply); НЕ получает порты
 stageA.wireStageA(ports, buildInfo) -> {observe, openState, stateApi, faultStore, components}
@@ -410,3 +423,4 @@ stageA.wireStageA(ports, buildInfo) -> {observe, openState, stateApi, faultStore
 - `A.2` — по итогам ревью #19: компоненты получают только `frame.services` (без портов), `stageA.js`; полная раскладка `Memory.strategy`/`Memory.strategyShadow`, `StatePatch` и владельцы путей; DTO FlowDelta/FlowWindow, EventCursor, Binding/ObservedBinding, ObservedOperation, CalendarEntry/Calendar, LedgerView, ReplacementPlan, ForecastSummary, ReplayFixture body, ReconciliationPatch, DemandOption; `Reservation.unknownAmount` + `RETIRED`, узел `spawnPool:<room>`; `NormalizedEvent.energyAmount`; переходы `NO_EFFECT→ISSUED`, `UNKNOWN→UNKNOWN`; новый stage-A порядок фаз и CPU-ограничения shadow; fingerprint снимка без `cpu`; двухпроходный `deepFreeze`; отказ canonical JSON на массивах с доп. свойствами; quarantine ключей control; ограничение логов `APP_CREATE_FAULT`.
 - `A.3` — аддитивно (координатор, по отчёту A1 #20): `GameReadPort.creepMemory(name)` — read-only копия `{role, strategy: {operationKey, homeRoom, ownerEpoch}}` из `Memory.creeps[name]` без обращения к getter `creep.memory` (он создаёт запись) и без записи Memory; read-only методы store `getUsedCapacity/getCapacity/getFreeCapacity` разрешены Reader; `EnergyObjectType` дополнен `tower` (класс STORAGE_CONTAINER). Флаг экспорта replay в схему `Memory.strategyShadow` пока не добавлен — решается при композиции A5.
 - `A.3` (дополнение, координатор, по #21): фактическая поверхность StateStore — в [STATE-A](STATE-A.md): `api().forWriter(writer)` (компоненты получают только handle своего writer; `services.state = readOnlyApi()`), `releaseQuarantine`, `compact`, `migrator`, `health`; `apply` может вернуть `READY({revision, replayed: true})`; записи `recentPatchIds` — `patchId|hash`; внутренние записи writer `state` (faults, compaction, quarantine) не увеличивают `revision`.
+- `A.4` — аддитивно (STRAT-A5, #25): `ReasonCode.NOT_REQUESTED`; `Memory.strategyShadow.exportRequest` (только оператор) и `replayExport` (writer `planning`, ограничен 98 304 символами фикстуры; READY/FAILED через 1500 тиков → `EXPIRED` без фикстуры; StateCodec декодирует оба поля, невалидное — в карантин); `ReplayFixtureBody.state` дополнен необязательными `lastClosedTick`, `observedOperations`, `shadowRooms.<r>.observedBindings/decisionRing`; `StateStore.close(tick)` пишет `lastClosedTick` (внутренняя запись CLOSE, без revision); Reader переносит `Memory.creeps[name].strategy` (через `GameReadPort.creepMemory`) в `CreepSnapshot.strategyEnvelope` после проверки (иначе null); фактические сигнатуры A5 — §10 и [SHADOW-A](SHADOW-A.md). Снимки A.4 имеют `contractVersion: 'A.4'` (фикстуры A.3 этим артефактом не принимаются).

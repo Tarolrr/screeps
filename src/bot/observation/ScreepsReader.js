@@ -10,7 +10,7 @@
 //   - NEVER touches `creep.memory` (that getter auto-creates Memory.creeps[name]).
 //     Legacy role is read only through the optional `gameRead.creepMemory(name)` hook
 //     (a port method that must read Memory.creeps[name] without creating it); absent
-//     hook => legacyRole null. Never reads the strategy envelope in stage A;
+//     hook => legacyRole null. the creation envelope (`strategy`) is copied from the same port read (A.4);
 //   - raw objects never leave this module: everything is copied into plain data
 //     and converted by WorldSnapshotBuilder (deep-frozen Snapshot).
 // Budget: `observationBudget.admit({name, budgetClass:'optional', estimateCpu, cursor})`
@@ -132,15 +132,18 @@ function readCreep(gameRead, name) {
     const c = gameRead.creep(name);
     if (!c) return null;
     let legacyRole = null;
+    let strategyEnvelope = null;
     if (typeof gameRead.creepMemory === 'function') {
         const mem = gameRead.creepMemory(name);
         if (mem && typeof mem === 'object' && typeof mem.role === 'string') legacyRole = mem.role;
+        // creation envelope copy (A.4); validated again by the builder, null when absent/malformed
+        if (mem && typeof mem === 'object' && mem.strategy && typeof mem.strategy === 'object') strategyEnvelope = mem.strategy;
     }
     const st = readStore(c);
     return {
         name: name, id: c.id, roomName: c.room && typeof c.room.name === 'string' ? c.room.name : null, pos: plainPos(c.pos),
         spawning: c.spawning === true, body: copyBody(c.body), ticksToLive: c.ticksToLive,
-        energy: st.energy, capacity: st.capacity, legacyRole: legacyRole,
+        energy: st.energy, capacity: st.capacity, legacyRole: legacyRole, strategyEnvelope: strategyEnvelope,
     };
 }
 

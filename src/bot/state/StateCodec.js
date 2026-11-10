@@ -38,6 +38,9 @@ const MIGRATION_FORMAT_VERSION = 1;
 const L = layout.LIMITS;
 const ROOT_FIELDS = layout.LAYOUT_SCHEMAS.StrategyRoot.fields;
 const SHADOW_ROOM_FIELDS = layout.LAYOUT_SCHEMAS.ShadowRoom.fields;
+const SHADOW_ROOT_FIELDS = layout.LAYOUT_SCHEMAS.ShadowRoot.fields;
+/** Optional root fields of Memory.strategyShadow (contract A.4); absent unless written. */
+const SHADOW_OPTIONAL_FIELDS = Object.freeze(['exportRequest', 'replayExport']);
 const json = S.json();
 
 /** Control class of Memory.strategy: a defect here blocks the whole namespace. */
@@ -252,7 +255,18 @@ function decodeShadow(raw) {
         if (spec.path[0] === 'ledger' && rawLedger !== undefined && !isPlainObject(rawLedger)) continue;
         decodeContainer(ns, spec, getPath(raw, spec.path), getPath(value, spec.path), quarantine, []);
     }
-    const known = ['schemaVersion', 'rooms', 'ledger', 'observedOperations', 'proposals'];
+    // contract A.4: optional singletons (operator export request, bounded replay export);
+    // an invalid value is quarantined (raw kept), the rest of the namespace loads
+    for (let i = 0; i < SHADOW_OPTIONAL_FIELDS.length; i++) {
+        const f = SHADOW_OPTIONAL_FIELDS[i];
+        if (!has(raw, f)) continue;
+        const v = own(raw, f);
+        let code = firstError(validate(SHADOW_ROOT_FIELDS[f], v));
+        if (code === null && findForbiddenKey(v) !== null) code = 'FORBIDDEN_KEY';
+        if (code !== null) quarantine.push(quarantineEntry(ns, [f], code, v));
+        else put(value, f, jsonClone(v));
+    }
+    const known = ['schemaVersion', 'rooms', 'ledger', 'observedOperations', 'proposals'].concat(SHADOW_OPTIONAL_FIELDS);
     Object.keys(raw).forEach(function (key) {
         if (known.indexOf(key) === -1) quarantine.push(quarantineEntry(ns, [key], 'UNKNOWN_FIELD', own(raw, key)));
     });

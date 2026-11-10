@@ -20,6 +20,7 @@ const { REASON_CODE_LIST } = require('./reasonCodes');
 const { isRoomName, isOperationKey } = require('./keys');
 const { SCHEMAS } = require('./dtos');
 const { SCHEMA_VERSION } = require('./version');
+const { isFingerprint } = require('./fingerprint');
 
 const LIMITS = Object.freeze({
     flowWindowsPerRoom: 30,        // DESIGN §3
@@ -30,6 +31,7 @@ const LIMITS = Object.freeze({
     proposals: 200,
     shadowRooms: 64,               // bounded; A2 compacts/evicts rooms not observed recently
     observedBindingsPerRoom: 256,
+    replayExportTicks: 49,         // contract A.4: replayed ticks per export (+1 baseline snapshot <= 50)
 });
 
 /** Path segments that must never be used as record keys (prototype pollution). */
@@ -78,12 +80,45 @@ const ShadowRoom = S.object({
     decisionRing: S.array(SCHEMAS.DecisionRecord, { maxLength: LIMITS.decisionRingPerRoom }),
 });
 
+/**
+ * Operator replay-export request (contract A.4): written ONLY by the operator
+ * (console); read-only for every component (no PATCH_RULES entry). The pipeline
+ * records `ticks` consecutive shadow ticks starting at tickFrom (default: now).
+ */
+const ExportRequest = S.object({
+    requested: S.bool(),
+    ticks: S.optional(S.nullable(S.int({ min: 1, max: LIMITS.replayExportTicks }))),
+    tickFrom: S.optional(S.nullable(tick)),
+});
+
+/** Status of the bounded replay export (contract A.4, writer planning). */
+/** EXPIRED: READY/FAILED export past its TTL; the fixture is dropped, the request identity kept (not re-run). */
+const ReplayExportStatus = Object.freeze({ RECORDING: 'RECORDING', READY: 'READY', FAILED: 'FAILED', EXPIRED: 'EXPIRED' });
+
+const ReplayExport = S.refine(S.object({
+    requestFingerprint: S.custom(isFingerprint, 'BAD_FINGERPRINT'),
+    status: S.enumOf(ReplayExportStatus),
+    startedAt: S.nullable(tick),
+    completedAt: S.nullable(tick),
+    reasonCode: S.nullable(reasonCode),
+    detail: S.nullable(S.json()),
+    fixture: S.nullable(SCHEMAS.ReplayFixture),
+}), function (r) {
+    if (r.status === ReplayExportStatus.READY && r.fixture === null) return [{ path: 'fixture', code: 'READY_WITHOUT_FIXTURE' }];
+    if (r.status !== ReplayExportStatus.READY && r.fixture !== null) return [{ path: 'fixture', code: 'FIXTURE_NOT_READY' }];
+    if (r.status === ReplayExportStatus.FAILED && r.reasonCode === null) return [{ path: 'reasonCode', code: 'REQUIRED' }];
+    return [];
+});
+
 const ShadowRoot = S.object({
     schemaVersion: S.literal(SCHEMA_VERSION),
     rooms: S.record(roomName, ShadowRoom, { maxKeys: LIMITS.shadowRooms }),
     ledger: S.object({ reservations: S.record(id, SCHEMAS.Reservation, { maxKeys: LIMITS.shadowReservations }) }),
     observedOperations: S.record(id, SCHEMAS.ObservedOperation, { maxKeys: LIMITS.observedOperations }),
     proposals: S.record(id, SCHEMAS.Proposal, { maxKeys: LIMITS.proposals }),
+    // contract A.4: absent unless used (emptyShadowRoot() does not create them)
+    exportRequest: S.optional(S.nullable(ExportRequest)),
+    replayExport: S.optional(S.nullable(ReplayExport)),
 });
 
 /** Read-only view returned by StateStore.open (A2); deep-frozen by the store. */
@@ -121,6 +156,8 @@ const PATCH_RULES = Object.freeze([
     // Memory.strategyShadow — planning (A5)
     { namespace: 'strategyShadow', pattern: ['rooms', '<room>', 'decisionRing'], writer: E.StateWriter.PLANNING, schema: S.array(SCHEMAS.DecisionRecord, { maxLength: LIMITS.decisionRingPerRoom }), roomField: 'roomName', deletable: false },
     { namespace: 'strategyShadow', pattern: ['proposals', '<key>'], writer: E.StateWriter.PLANNING, schema: SCHEMAS.Proposal, keyField: 'proposalId', deletable: true },
+    // contract A.4: bounded replay export (writer planning); exportRequest is operator-only (no rule)
+    { namespace: 'strategyShadow', pattern: ['replayExport'], writer: E.StateWriter.PLANNING, schema: S.nullable(ReplayExport), deletable: true },
 ]);
 
 function matchRule(namespace, path) {
@@ -269,7 +306,8 @@ module.exports = {
     LIMITS,
     STAGE_A_EMPTY_STRATEGY_KEYS,
     PATCH_RULES,
-    LAYOUT_SCHEMAS: Object.freeze({ StrategyRoot: StrategyRoot, ShadowRoot: ShadowRoot, ShadowRoom: ShadowRoom, Migrations: Migrations, StateView: StateView, ReconciliationPatch: ReconciliationPatch }),
+    ReplayExportStatus,
+    LAYOUT_SCHEMAS: Object.freeze({ StrategyRoot: StrategyRoot, ShadowRoot: ShadowRoot, ShadowRoom: ShadowRoom, Migrations: Migrations, StateView: StateView, ReconciliationPatch: ReconciliationPatch, ExportRequest: ExportRequest, ReplayExport: ReplayExport }),
     patchOwner,
     validateStatePatch,
     emptyStrategyRoot,

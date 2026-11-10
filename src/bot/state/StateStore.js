@@ -614,6 +614,42 @@ function createStateStore(options) {
     }
 
     /**
+     * CLOSE of tick T (STRAT-A5 integration, internal writer): sets meta field
+     * strategy.lastClosedTick = tick as the LAST write of the tick. Internal like
+     * FaultStore writes: no revision bump, no recentPatchIds entry. The
+     * Reconciler (A3) reads it on the next tick: lastClosedTick < T-1 means a tick
+     * was lost (CPU abort, reset before CLOSE) and is a gap, never zero flows.
+     * Idempotent for the same tick; only the tick of the open session is accepted.
+     * @param {number} tick
+     * @returns {object} READY({lastClosedTick, revision}) | REJECTED(STALE_INPUT|INCOMPATIBLE_SCHEMA|INVALID_RECORD, …)
+     */
+    function close(tick) {
+        const problem = sessionProblem(null);
+        if (problem !== null) return problem;
+        if (!isTick(tick) || tick !== session.tick) return REJECTED(ReasonCode.STALE_INPUT, { expectedRevision: null, actualRevision: session.strategy.revision, cause: 'TICK_MISMATCH', sessionTick: session.tick, tick: isTick(tick) ? tick : null });
+        const revision = session.strategy.revision;
+        if (session.strategy.lastClosedTick === tick) return READY({ lastClosedTick: tick, revision: revision }, fingerprint({ lastClosedTick: tick, revision: revision }));
+        const work = [{ namespace: NS_STRATEGY, path: ['lastClosedTick'], op: E.PatchOp.SET, value: tick }];
+        const rawRoot = session.raw[NS_STRATEGY];
+        if (rawRoot !== undefined && treeConflict(rawRoot, work[0].path)) return invalid('close:' + tick, [{ path: '$/path', code: 'MEMORY_CONFLICT' }], { namespace: NS_STRATEGY, at: 'lastClosedTick' });
+        const root = shallowCopy(session.strategy);
+        put(root, 'lastClosedTick', tick);
+        Object.freeze(root);
+        try {
+            persist(work);
+        } catch (error) {
+            if (log) log.error('STATE_WRITE_FAULT', { message: String(error && error.message ? error.message : error).slice(0, 200) });
+            delete cache[NS_STRATEGY];
+            return invalid('close:' + tick, [{ path: '$', code: 'MEMORY_WRITE_FAILED' }]);
+        }
+        session.strategy = root;
+        refreshCacheDecoded();
+        contentSeq++;
+        rebuildView();
+        return READY({ lastClosedTick: tick, revision: revision }, fingerprint({ lastClosedTick: tick, revision: revision }));
+    }
+
+    /**
      * Writer-'state' maintenance of strategyShadow.rooms (internal: no revision
      * bump). Evicts rooms not observed for ROOM_RETENTION_TICKS, and stale rooms
      * (>= ROOM_EVICTION_MIN_AGE) when the room count is within ROOM_HEADROOM of
@@ -742,6 +778,7 @@ function createStateStore(options) {
         open: open,
         apply: apply,
         checkpoint: checkpoint,
+        close: close,
         compact: compact,
         releaseQuarantine: releaseQuarantine,
         view: view,

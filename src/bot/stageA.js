@@ -11,19 +11,29 @@
 // State access (A2, docs/strategy/STATE-A.md):
 //   - frame.services.state = store.readOnlyApi(): {view, apply} where apply always
 //     refuses; no component can write through the shared services object;
-//   - each writing component receives ONLY its writer-bound handle, captured in its
-//     closure here, e.g. (A5):
-//         const stateRoot = store.api();
-//         const observationState = stateRoot.forWriter('observation');   // A3 reconcile
-//         const financeState = stateRoot.forWriter('finance');           // A4 forecast/admit
-//         const planningState = stateRoot.forWriter('planning');         // A5 recorder
-//     store.api() itself (and writer 'state') never reaches a component;
+//   - each writing shadow component calls ONLY its own writer-bound handle (A5;
+//     createShadowComponents keeps no dispatcher over several writers):
+//         observation -> reconcile.shadow (A3 Reconciler)
+//         finance     -> forecast.shadow  (A4 ForecastSummary)
+//         planning    -> close.shadow (DecisionRecorder ring, proposals, replay export;
+//                        plan/admit only read through it)
+//     expectedRevision = revision of the view the component read at its start; after an
+//     accepted batch the returned revision is the next expected one (no blind re-read).
+//     store.api() itself (and writer 'state') never reaches a component; the CLOSE
+//     step gets `closeTick(t) = store.close(t)` (lastClosedTick, internal meta write);
 //   - faultStore persists FaultStatus in Memory.strategy.faults (heap fallback when
 //     the store is suspended/frozen).
+//
+// Shadow scope (STRAT-A5, docs/strategy/SHADOW-A.md): only rooms whose router decision
+// is SHADOW (operator: Memory.strategy.control.rooms[room].requestedMode = 'shadow').
+// Default is legacy with NO shadow work: OBSERVE captures only shadow rooms and returns
+// REJECTED(NOT_REQUESTED) when there are none (no snapshot CPU before legacy).
 
 const { createStateStore } = require('./state/StateStore');
-
 const { createReader } = require('./observation/ScreepsReader');
+const { createShadowComponents, shadowRoomsOf } = require('./integration/ShadowAdapter');
+const { REJECTED } = require('./domain/results');
+const { ReasonCode } = require('./domain/reasonCodes');
 
 /**
  * @param {ReturnType<typeof import('./app/ports').createRuntimePorts>} ports
@@ -34,14 +44,27 @@ const { createReader } = require('./observation/ScreepsReader');
 function wireStageA(ports, buildInfo) {
     const reader = createReader({ gameRead: ports.gameRead, cpu: ports.cpu });
     const store = createStateStore({ memory: ports.memory, buildInfo: buildInfo, log: ports.log, clock: ports.clock });
-    // A3-A5 components still to be wired (A5):
-    //   components: createShadowComponents({ models, recorder, state: {observation, finance, planning} handles above })
+    const stateRoot = store.api();
+    const components = createShadowComponents({
+        state: {
+            observation: stateRoot.forWriter('observation'),
+            finance: stateRoot.forWriter('finance'),
+            planning: stateRoot.forWriter('planning'),
+        },
+        closeTick: function (tick) { return store.close(tick); },
+        buildInfo: buildInfo,
+        log: ports.log,
+    });
     return {
-        observe: function (frame, budget) { return reader.capture(frame.tick, { rooms: 'ALL_VISIBLE', stage: 'FULL' }, budget); },
+        observe: function (frame, budget) {
+            const rooms = shadowRoomsOf(frame.result('boot.router'));
+            if (rooms.length === 0) return REJECTED(ReasonCode.NOT_REQUESTED, { shadowRooms: 0 });
+            return reader.capture(frame.tick, { rooms: rooms, stage: 'FULL' }, budget);
+        },
         openState: function (frame) { return store.open(frame.tick); },
         stateApi: store.readOnlyApi(),
         faultStore: store.faultStore(),
-        components: [],
+        components: components,
     };
 }
 

@@ -370,6 +370,22 @@ Consequences:
   flat dist2: Memory size was 8 975 B for both (9 132 B in the reset runs, for
   both trees), with identical objects, actions and event logs.
 
+## Executed runs (final A5 shadow artifact, 2026-11-10, coordinator)
+
+Artifact: branch `autonomy/issue-25` (STRAT-A5 after independent review fixes), buildId `b-b5b7b3891cc31ff1`, `main.js` sha256 `8c38b061…2617`, contract A.4, 61 modules. Seed (`--seed-memory`): `Memory.strategy` schema1 with `control.rooms.W9N8 = {requestedMode: 'shadow', effectiveOwner: 'legacy', epoch: 0, …}` applied symmetrically to baseline and artifact runs (dist2 ignores it). 100 steps each; all instances destroyed after verified teardown.
+
+| run id | mode | flags | verdict |
+|---|---|---|---|
+| `strat-load-1794296954391-2532277` | load | `--expect-strategy` | PASS |
+| `strat-shadow-noop-1794296954411-2532278` | shadow-noop | `--expect-shadow` | PASS |
+| `strat-legacy-eq-1794296954393-2532279` | legacy-eq | `--expect-strategy` | PASS |
+| `strat-reset-1794296954399-2532280` | reset | `--expect-strategy` | PASS |
+
+- SHADOW-NOOP: legacy Memory (all keys except `strategy`, `strategyShadow`, `strategyMigration`), full object rows/action logs and raw event logs identical between flat dist2 and the shadow artifact (calibration baseline vs baseline2: no differences). Shadow actually ran: at gameTime 101 `strategyShadow.rooms.W9N8` held 4 decision records, a closed flow window, a forecast summary and 5 observed bindings; `strategy.lastClosedTick = 100`, revision 111, no component faults.
+- RESET findings (not failures): (1) the known dist2 reset sensitivity (`mule_build` orders), identical in flat dist2; (2) `Memory.strategy` differs between the artifact's reset and no-reset runs from gameTime 2 (`recentPatchIds`, `revision`): after a reset the previous snapshot is gone, so reconcile records an UNKNOWN/EVENT_GAP delta and the forecast cache is recomputed — expected, see SHADOW-A.md. Identity fields (`schemaVersion`, `buildId`, non-decreasing `revision`, unchanged `control`/`migrations`) held across all resets.
+- A pre-fix A5 artifact (`b-003544fc5aa70751`) gave the same four PASS verdicts (`strat-load-1794213111381-904309`, `strat-shadow-noop-1794213320200-909181`, `strat-legacy-eq-1794213320222-909182`, `strat-reset-1794213320228-909183`).
+- Not measured here: CPU on the server runtime per tick (the suite does not record per-tick CPU of the strategy code).
+
 ## Findings
 
 1. **Load.** The artifact loads as the single module `main`, exports `loop`,

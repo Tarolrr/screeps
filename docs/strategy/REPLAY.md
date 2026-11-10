@@ -15,7 +15,7 @@
 
 `exportFixture({snapshots, stateView, events, expectedReasonCodes, expectedForecast, buildId, policyVersion, seed})` — чистая функция; вне границ бросает `RangeError('FIXTURE_TOO_LARGE')`/`TypeError` с `.errors`. `serializeFixture(fixture)` — ограниченный canonical JSON для локального артефакта.
 
-Триггер: `evaluateExportRequest(request, tick) -> {export, ticks, reason}`; экспорт выполняется только при `request.requested === true` (опционально `tickFrom`, `ticks ≤ 50`). Предполагаемое место флага — `Memory.strategyShadow.exportRequest`, но **поле пока не входит в схему `validateShadowRoot`** (contract A.2): запись/чтение флага и вывод артефакта подключает A5/координатор после изменения контракта. Фикстура публикуется только в локальный тестовый артефакт; публичные отчёты не копируют приватный мир.
+Триггер: `evaluateExportRequest(request, tick) -> {export, ticks, reason}`; экспорт выполняется только при `request.requested === true` (опционально `tickFrom`, `ticks ≤ 50`). Флаг — `Memory.strategyShadow.exportRequest` (контракт A.4; пишет только оператор), результат — ограниченный `Memory.strategyShadow.replayExport` (writer planning); порядок действий оператора и извлечение — в [SHADOW-A](SHADOW-A.md). Фикстура публикуется только в локальный тестовый артефакт; публичные отчёты не копируют приватный мир.
 
 ## Запуск
 

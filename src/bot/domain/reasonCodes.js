@@ -28,6 +28,9 @@ const ReasonCode = Object.freeze({
     COMPONENT_FAULT: 'COMPONENT_FAULT',           // §7: component threw, its output rejected
     RETRY_COOLDOWN: 'RETRY_COOLDOWN',             // §7: retry < 25 ticks with unchanged input
     CIRCUIT_OPEN: 'CIRCUIT_OPEN',                 // §7: 3 consecutive failures -> 100 tick breaker
+
+    // contract A.4 (STRAT-A5)
+    NOT_REQUESTED: 'NOT_REQUESTED',               // new-system work not requested for the room (default legacy, no shadow)
 });
 
 const REASON_CODE_LIST = Object.freeze(Object.keys(ReasonCode).sort());

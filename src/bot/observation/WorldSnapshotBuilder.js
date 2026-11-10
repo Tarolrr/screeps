@@ -21,7 +21,8 @@
 //   piles: [{id, objectType: 'resource'|'tombstone'|'ruin', pos, energy}],
 //   creeps: [creepObservation]                   (own creeps currently in this room)
 // }
-// creepObservation = {name, id, roomName, pos, spawning, body, ticksToLive, energy, capacity, legacyRole}
+// creepObservation = {name, id, roomName, pos, spawning, body, ticksToLive, energy, capacity, legacyRole,
+//                     strategyEnvelope?: {operationKey, homeRoom, ownerEpoch} (validated; null when absent/malformed)}
 //
 // Unknown numbers (undefined/null/NaN) become Measured UNKNOWN(MISSING_FIELD) and
 // are listed in missingFields; they never become 0.
@@ -29,7 +30,7 @@
 const { measured, unknownMeasure, snapshotFingerprint } = require('../domain/dtos');
 const { CONTRACT_VERSION } = require('../domain/version');
 const { ReasonCode } = require('../domain/reasonCodes');
-const { isPosition, isRoomName } = require('../domain/keys');
+const { isPosition, isRoomName, isOperationKey } = require('../domain/keys');
 const { fingerprint } = require('../domain/fingerprint');
 const { canonicalClone } = require('../domain/canonical');
 const { deepFreeze } = require('../domain/freeze');
@@ -309,8 +310,20 @@ function buildCreep(c, missing) {
         spawning: c.spawning === true, body: bodyParts(c.body, p + 'body', missing), ticksToLive: ticksToLive,
         store: { energy: meas(c.energy, p + 'store.energy', missing), capacity: meas(c.capacity, p + 'store.capacity', missing) },
         legacyRole: typeof c.legacyRole === 'string' && c.legacyRole !== '' ? c.legacyRole : null,
-        strategyEnvelope: null,
+        strategyEnvelope: envelopeOf(c.strategyEnvelope),
     };
+}
+
+/**
+ * Creation envelope {operationKey, homeRoom, ownerEpoch} (ARCHITECTURE §5, INTEGRATION):
+ * evidence of origin, copied only when every field is valid; absent or malformed -> null
+ * (the creep is then treated like any creep without an envelope: home from spawn/bindings).
+ */
+function envelopeOf(env) {
+    if (!env || typeof env !== 'object') return null;
+    if (!isOperationKey(env.operationKey) || !isRoomName(env.homeRoom)) return null;
+    if (!(typeof env.ownerEpoch === 'number' && Number.isInteger(env.ownerEpoch) && env.ownerEpoch >= 0)) return null;
+    return { operationKey: env.operationKey, homeRoom: env.homeRoom, ownerEpoch: env.ownerEpoch };
 }
 
 /**
